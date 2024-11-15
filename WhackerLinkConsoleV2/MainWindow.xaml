@@ -4,20 +4,17 @@
         xmlns:local="clr-namespace:WhackerLinkConsoleV2.Controls"
         Title="WhackerLinkConsoleV2" Height="600" Width="1000" Background="#1e1e1e">
     <Grid>
-        <!-- Menu Bar -->
         <Menu VerticalAlignment="Top" Height="25">
             <MenuItem Header="File">
                 <MenuItem Header="Open Codeplug" Click="OpenCodeplug_Click"/>
             </MenuItem>
             <MenuItem Header="Edit">
-                <!-- Toggle button for enabling/disabling edit mode -->
                 <MenuItem Header="Enable Edit Mode" Click="ToggleEditMode_Click"/>
                 <MenuItem Header="Select Widgets to Display" Click="SelectWidgets_Click"/>
                 <MenuItem Header="Reset Settings" Click="ResetSettings_Click"/>
             </MenuItem>
         </Menu>
 
-        <!-- Main Layout with Canvas to hold ChannelBoxes -->
         <Canvas x:Name="ChannelsCanvas" Margin="0,25,0,0" Background="#1e1e1e" />
     </Grid>
 </Window>
