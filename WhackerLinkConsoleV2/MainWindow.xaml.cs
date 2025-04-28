@@ -216,6 +216,7 @@ namespace WhackerLinkConsoleV2
                         handler.OnEmergencyAlarmResponse += HandleEmergencyAlarmResponse;
                         handler.OnAudioData += HandleReceivedAudio;
                         handler.OnAffiliationUpdate += HandleAffiliationUpdate;
+                        handler.OnCallAlert += HandleCallAlert;
 
                         handler.OnUnitRegistrationResponse += (response) =>
                         {
@@ -933,6 +934,33 @@ namespace WhackerLinkConsoleV2
                     _flashingManager.Start();
                     _emergencyAlertPlayback.Start();
                 });
+            }
+        }
+
+        private void HandleCallAlert(CALL_ALRT request)
+        {
+            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+            {
+                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                if (system.IsDvm)
+                    continue;
+
+                IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                if (request.DstId == system.Rid)
+                {
+
+                    ACK_RSP ack = new ACK_RSP
+                    {
+                        SrcId = request.SrcId,
+                        DstId = request.DstId,
+                        Service = PacketType.CALL_ALRT
+                    };
+
+                    handler.SendMessage(ack.GetData());
+                }
             }
         }
 
