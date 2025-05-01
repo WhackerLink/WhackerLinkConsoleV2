@@ -226,6 +226,37 @@ namespace WhackerLinkConsoleV2
                                 {
                                     systemStatusBox.Background = (Brush)new BrushConverter().ConvertFrom("#FF00BC48");
                                     systemStatusBox.ConnectionState = "Connected";
+
+                                    foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+                                    {
+                                        if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                                            continue;
+
+                                        Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                                        Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                                        if (!system.IsDvm)
+                                        {
+                                            IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                                            if (channel.IsSelected && handler.IsConnected)
+                                            {
+                                                Console.WriteLine("sending WLINK master aff");
+
+                                                Task.Run(() =>
+                                                {
+                                                    GRP_AFF_REQ release = new GRP_AFF_REQ
+                                                    {
+                                                        SrcId = system.Rid,
+                                                        DstId = cpgChannel.Tgid,
+                                                        Site = system.Site
+                                                    };
+
+                                                    handler.SendMessage(release.GetData());
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
                                 else
                                 {
@@ -247,6 +278,13 @@ namespace WhackerLinkConsoleV2
                         handler.OnOpen += () =>
                         {
                             Console.WriteLine("Peer connected");
+                            U_REG_REQ release = new U_REG_REQ
+                            {
+                                SrcId = system.Rid,
+                                Site = system.Site
+                            };
+
+                            handler.SendMessage(release.GetData());
                         };
 
                         handler.OnReconnecting += () =>
@@ -260,17 +298,7 @@ namespace WhackerLinkConsoleV2
 
                             handler.OnGroupAffiliationResponse += (response) => { /* TODO */ };
 
-                            if (handler.IsConnected)
-                            {
-                                U_REG_REQ release = new U_REG_REQ
-                                {
-                                    SrcId = system.Rid,
-                                    Site = system.Site
-                                };
-
-                                handler.SendMessage(release.GetData());
-                            }
-                            else
+                            if (!handler.IsConnected)
                             {
                                 systemStatusBox.Background = new SolidColorBrush(Colors.Red);
                                 systemStatusBox.ConnectionState = "Disconnected";
