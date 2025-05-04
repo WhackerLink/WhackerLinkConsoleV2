@@ -42,7 +42,6 @@ using fnecore.P25;
 using fnecore;
 using Microsoft.VisualBasic;
 using System.Text;
-using Nancy;
 using Constants = fnecore.Constants;
 using System.Security.Cryptography;
 using fnecore.P25.LC.TSBK;
@@ -497,6 +496,10 @@ namespace WhackerLinkConsoleV2
                                 }
                             };
 
+#if DEBUG
+                            Console.WriteLine($"WLINK AUDIO_DATA SrcId: {system.Rid}; DstId: {cpgChannel.Tgid}; Freq: {channel.VoiceChannel}");
+#endif
+
                             handler.SendMessage(voicePaket);
                         }
                     }
@@ -634,9 +637,8 @@ namespace WhackerLinkConsoleV2
                     };
 
                     byte[] tsbk = new byte[P25Defines.P25_TSBK_LENGTH_BYTES];
-                    byte[] payload = new byte[P25Defines.P25_TSBK_LENGTH_BYTES];
 
-                    callAlert.Encode(ref tsbk, ref payload, true, true);
+                    callAlert.Encode(ref tsbk, true, true);
 
                     handler.SendP25TSBK(callData, tsbk);
 
