@@ -44,6 +44,13 @@ systems:
         systemID: 1
         siteID: 1
         range: 1.5
+tones:
+  - name: "Station 1"
+    toneA: 855.5
+    toneB: 349
+  - name: "Station 2"
+    toneA: 1006.9
+    toneB: 500.9
 
 zones:
   - name: "Zone 1"
