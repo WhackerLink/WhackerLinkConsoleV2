@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <None Remove="alerttone.png" />
+	<None Remove="Assets\dualpage.png" />
+	<None Remove="Assets\pager.png" />
     <None Remove="Assets\alerttone.png" />
     <None Remove="Assets\alerttone2.png" />
     <None Remove="Assets\audio.png" />
@@ -71,6 +73,8 @@
     <Resource Include="Assets\whackerlink-logo.png" />
     <Resource Include="Assets\WhackerLinkLogoV2.png" />
     <Resource Include="Assets\WhackerLinkLogoV4.png" />
+	<Resource Include="Assets\dualpage.png" />
+	<Resource Include="Assets\pager.png" />
   </ItemGroup>
 
   <ItemGroup>

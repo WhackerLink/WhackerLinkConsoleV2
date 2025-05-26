@@ -1,0 +1,30 @@
+﻿<UserControl x:Class="WhackerLinkConsoleV2.Controls.ToneSet"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              Width="220" Height="100" Background="#FF0B004B">
+    <Border BorderBrush="Gray" BorderThickness="1,1,1,1" CornerRadius="0" Padding="10" Background="LightGray" Margin="0,0,0,0" >
+        <StackPanel Orientation="Vertical" Margin="0,0,0,0">
+            <TextBlock Text="{Binding ToneName}" FontWeight="Bold" FontSize="24" Uid="toneName"/>
+            <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Margin="148,6,0,0" Grid.RowSpan="2" Grid.ColumnSpan="2" Width="50">
+                <Button Width="53" Height="40" x:Name="ToneSetPlayBtn" Click="ToneSetPlayBtn_Click" BorderThickness="0,0,0,0">
+                    <Button.Resources>
+                        <Style TargetType="{x:Type Border}">
+                            <Setter Property="CornerRadius" Value="2"/>
+                        </Style>
+                    </Button.Resources>
+                    <Image Source="pack://application:,,,/WhackerLinkConsoleV2;component/Assets/pager.png" Width="40" Height="42"/>
+                </Button>
+                <!-- <Button Width="40" Height="40" x:Name="ToneSetSelectBtn" Click="ToneSetSelectBtn_Click" BorderThickness="0,0,0,0" Margin="5,0,0,0">
+                    <Button.Resources>
+                        <Style TargetType="{x:Type Border}">
+                            <Setter Property="CornerRadius" Value="2"/>
+                        </Style>
+                    </Button.Resources>
+                    <Image Source="pack://application:,,,/WhackerLinkConsoleV2;component/Assets/dualpage.png" Width="20" Height="42"/>
+
+                </Button>-->
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</UserControl>

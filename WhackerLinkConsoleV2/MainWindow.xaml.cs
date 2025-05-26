@@ -49,6 +49,7 @@ using WebSocketSharp;
 using NWaves.Signals;
 using static WhackerLinkConsoleV2.P25Crypto;
 using static WhackerLinkLib.Models.Radio.Codeplug;
+using System.Threading.Channels;
 
 namespace WhackerLinkConsoleV2
 {
@@ -67,6 +68,9 @@ namespace WhackerLinkConsoleV2
 
         private SettingsManager _settingsManager = new SettingsManager();
         private SelectedChannelsManager _selectedChannelsManager;
+
+        private List<(double ToneA, double ToneB)> _selectedToneSets = new List<(double, double)>();
+
         private FlashingBackgroundManager _flashingManager;
         private WaveFilePlaybackManager _emergencyAlertPlayback;
         private WebSocketManager _webSocketManager = new WebSocketManager();
@@ -122,6 +126,11 @@ namespace WhackerLinkConsoleV2
 
             _selectedChannelsManager.SelectedChannelsChanged += SelectedChannelsChanged;
             Loaded += MainWindow_Loaded;
+        }
+
+        private class YamlConfig
+        {
+            public List<Codeplug.Tone> Tones { get; set; }
         }
 
         private void OpenCodeplug_Click(object sender, RoutedEventArgs e)
@@ -303,8 +312,7 @@ namespace WhackerLinkConsoleV2
                                 systemStatusBox.ConnectionState = "Disconnected";
                             }
                         });
-                    } else
-                    {
+                    } else {
                         _fneSystemManager.AddFneSystem(system.Name, system, this);
 
                         PeerSystem peer = _fneSystemManager.GetFneSystem(system.Name);
@@ -343,6 +351,7 @@ namespace WhackerLinkConsoleV2
 
                 }
             }
+
 
             if (_settingsManager.ShowChannels && Codeplug != null)
             {
@@ -415,6 +424,137 @@ namespace WhackerLinkConsoleV2
                 }
             }
 
+            // Add ToneSet boxes if enabled
+            if (_settingsManager.ShowQCTones && Codeplug != null && Codeplug?.Tones != null)
+            {
+                foreach (var tone in Codeplug.Tones)
+                {
+                    var toneSetControl = new ToneSet(tone.Name, tone.ToneA, tone.ToneB);
+
+                    // Hook up events
+                    toneSetControl.PlayClicked += async (s, e) =>
+                    {
+                        if (_selectedToneSets.Count > 0)
+                        {
+                            var selectedTones = _selectedToneSets.ToList();
+                            var initiallyActiveChannels = _selectedChannelsManager
+                                .GetSelectedChannels()
+                                .Where(c => c.PageState)
+                                .ToList();
+
+                            for (int i = 0; i < selectedTones.Count; i++)
+                            {
+                                var selected = selectedTones[i];
+                                var key = (selected.ToneA, selected.ToneB);
+
+                                // Check if any of the original channels have lost their PageState
+                                var prematurelyCleared = initiallyActiveChannels
+                                    .Where(c => !c.PageState)
+                                    .ToList();
+
+                                if (prematurelyCleared.Any())
+                                {
+                                    // Pause logic: restore PageState for affected channels
+                                    foreach (var ch in prematurelyCleared)
+                                    {
+                                        ch.PageState = true;
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            ch.PageSelectButton.Background = ch.orangeGradient;
+                                        });
+                                    }
+
+                                    // Wait a moment to visually reflect the reset before continuing
+                                    await Task.Delay(300);
+                                }
+
+                                // Play the tone
+                                await PlayTone(selected.ToneA.ToString(), selected.ToneB.ToString());
+
+                                // Remove from selected set
+                                _selectedToneSets.Remove(key);
+
+                                // Deselect the tone visually
+                                foreach (var child in ChannelsCanvas.Children)
+                                {
+                                    if (child is ToneSet ts && ts.ToneA == key.ToneA && ts.ToneB == key.ToneB)
+                                    {
+                                        ts.SetSelected(false);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Now that all tones are done, clean up page state
+                            foreach (var ch in initiallyActiveChannels)
+                            {
+                                ch.PageState = false;
+                                ch.PageSelectButton.Background = ch.grayGradient;
+                            }
+                        }
+                        else
+                        {
+                            var hasActivePage = _selectedChannelsManager.GetSelectedChannels().Any(c => c.PageState);
+                            if (hasActivePage)
+                            {
+                                await PlayTone(tone.ToneA.ToString(), tone.ToneB.ToString());
+
+                                // Clear PageState after this tone
+                                foreach (var channel in _selectedChannelsManager.GetSelectedChannels())
+                                {
+                                    channel.PageState = false;
+                                    channel.PageSelectButton.Background = channel.grayGradient;
+                                }
+                            }
+                        }
+                    };
+
+
+                    toneSetControl.SelectToggled += (s, e) =>
+                    {
+                        var key = (tone.ToneA, tone.ToneB);
+                        if (_selectedToneSets.Contains(key))
+                        {
+                            _selectedToneSets.Remove(key);
+                            toneSetControl.SetSelected(false);
+                        }
+                        else
+                        {
+                            _selectedToneSets.Add(key);
+                            toneSetControl.SetSelected(true);
+                        }
+                    };
+
+                    // Position like ToneSet Boxes using same layout logic
+                    if (_settingsManager.QCToneSetPositions.TryGetValue(tone.Name, out var position))
+                    {
+                        Canvas.SetLeft(toneSetControl, position.X);
+                        Canvas.SetTop(toneSetControl, position.Y);
+                    }
+                    else
+                    {
+                        Canvas.SetLeft(toneSetControl, offsetX);
+                        Canvas.SetTop(toneSetControl, offsetY);
+                    }
+
+                    toneSetControl.MouseLeftButtonDown += ToneSet_MouseLeftButtonDown;
+                    toneSetControl.MouseMove += ToneSet_MouseMove;
+                    toneSetControl.MouseRightButtonDown += ToneSet_MouseRightButtonDown;
+
+                    ChannelsCanvas.Children.Add(toneSetControl);
+
+                    offsetX += 225;
+
+                    if (offsetX + 220 > ChannelsCanvas.ActualWidth)
+                    {
+                        offsetX = 20;
+                        offsetY += 106;
+                    }
+                }
+            }
+
+
+
             playbackChannelBox = new ChannelBox(_selectedChannelsManager, _audioManager, PLAYBACKCHNAME, PLAYBACKSYS, PLAYBACKTG);
 
             if (_settingsManager.ChannelPositions.TryGetValue(PLAYBACKCHNAME, out var pos))
@@ -446,6 +586,95 @@ namespace WhackerLinkConsoleV2
             //}
 
             AdjustCanvasHeight();
+        }
+
+        private const int GridSize = 5;
+
+        private void ToneSet_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!isEditMode || !(sender is UIElement element)) return;
+
+            _draggedElement = element;
+            _startPoint = e.GetPosition(ChannelsCanvas);
+            _offsetX = _startPoint.X - Canvas.GetLeft(_draggedElement);
+            _offsetY = _startPoint.Y - Canvas.GetTop(_draggedElement);
+            _isDragging = true;
+
+            element.CaptureMouse();
+        }
+
+        private void ToneSet_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!isEditMode || !_isDragging || _draggedElement == null) return;
+
+            Point currentPosition = e.GetPosition(ChannelsCanvas);
+
+            // Calculate the new position with snapping to the grid
+            double newLeft = Math.Round((currentPosition.X - _offsetX) / GridSize) * GridSize;
+            double newTop = Math.Round((currentPosition.Y - _offsetY) / GridSize) * GridSize;
+
+            // Ensure the box stays within canvas bounds
+            newLeft = Math.Max(0, Math.Min(newLeft, ChannelsCanvas.ActualWidth - _draggedElement.RenderSize.Width));
+            newTop = Math.Max(0, Math.Min(newTop, ChannelsCanvas.ActualHeight - _draggedElement.RenderSize.Height));
+
+            // Apply snapped position
+            Canvas.SetLeft(_draggedElement, newLeft);
+            Canvas.SetTop(_draggedElement, newTop);
+
+            // Save the new position if it's a ToneSet
+            if (_draggedElement is ToneSet toneSet)
+            {
+                _settingsManager.UpdateQCToneSetPosition(toneSet.ToneName, newLeft, newTop);
+            }
+
+            AdjustCanvasHeight();
+        }
+
+        private void ToneSet_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!isEditMode || !_isDragging || _draggedElement == null) return;
+
+            _isDragging = false;
+            _draggedElement.ReleaseMouseCapture();
+            _draggedElement = null;
+        }
+
+
+        private async void ToneSet_PlayClicked(object sender, EventArgs e)
+        {
+            if (sender is ToneSet toneSet)
+            {
+                if (_selectedToneSets.Count > 0)
+                {
+                    foreach (var selected in _selectedToneSets)
+                    {
+                        await PlayTone(selected.ToneA.ToString(), selected.ToneB.ToString());
+                    }
+                }
+                else
+                {
+                    await PlayTone(toneSet.ToneA.ToString(), toneSet.ToneB.ToString());
+                }
+            }
+        }
+
+        private void ToneSet_SelectClicked(object sender, EventArgs e)
+        {
+            if (sender is ToneSet toneSet)
+            {
+                var key = (toneSet.ToneA, toneSet.ToneB);
+
+                if (_selectedToneSets.Contains(key))
+                {
+                    _selectedToneSets.Remove(key);
+                    toneSet.SetSelected(false);
+                }
+                else
+                {
+                    _selectedToneSets.Add(key);
+                    toneSet.SetSelected(true);
+                }
+            }
         }
 
         private void WaveIn_RecordingStopped(object sender, EventArgs e)
@@ -934,6 +1163,7 @@ namespace WhackerLinkConsoleV2
                 _settingsManager.ShowSystemStatus = widgetSelectionWindow.ShowSystemStatus;
                 _settingsManager.ShowChannels = widgetSelectionWindow.ShowChannels;
                 _settingsManager.ShowAlertTones = widgetSelectionWindow.ShowAlertTones;
+                _settingsManager.ShowQCTones = widgetSelectionWindow.ShowQCTones;
 
                 GenerateChannelWidgets();
                 _settingsManager.SaveSettings();
@@ -1301,8 +1531,6 @@ namespace WhackerLinkConsoleV2
             element.CaptureMouse();
         }
 
-        private const int GridSize = 5;
-
         private void ChannelBox_MouseMove(object sender, MouseEventArgs e)
         {
             if (!isEditMode || !_isDragging || _draggedElement == null) return;
@@ -1455,10 +1683,121 @@ namespace WhackerLinkConsoleV2
             if (!string.IsNullOrEmpty(_settingsManager.LastCodeplugPath) && File.Exists(_settingsManager.LastCodeplugPath))
             {
                 LoadCodeplug(_settingsManager.LastCodeplugPath);
+                //LoadToneSets();
             }
             else
             {
                 GenerateChannelWidgets();
+            }
+        }
+
+        private async Task PlayTone(string ToneA, string ToneB)
+        {
+            var selectedChannels = _selectedChannelsManager.GetSelectedChannels();
+
+            // Check if any selected channel has PageState = true
+            if (!selectedChannels.Any(ch => ch.PageState))
+            {
+                // No channels with active page state - do nothing
+                return;
+            }
+
+            foreach (ChannelBox channel in selectedChannels)
+            {
+                if (!channel.PageState)
+                    continue; // skip channels without page state
+
+                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                ToneGenerator generator = new ToneGenerator();
+
+                double toneADuration = 1.0;
+                double toneBDuration = 3.0;
+
+                byte[] toneA = generator.GenerateTone(double.Parse(ToneA), toneADuration);
+                byte[] toneB = generator.GenerateTone(double.Parse(ToneB), toneBDuration);
+
+                byte[] combinedAudio = new byte[toneA.Length + toneB.Length];
+                Buffer.BlockCopy(toneA, 0, combinedAudio, 0, toneA.Length);
+                Buffer.BlockCopy(toneB, 0, combinedAudio, toneA.Length, toneB.Length);
+
+                int chunkSize = system.IsDvm ? 320 : 1600;
+                int totalChunks = (combinedAudio.Length + chunkSize - 1) / chunkSize;
+
+                _audioManager.AddTalkgroupStream(cpgChannel.Tgid, combinedAudio);
+
+                await Task.Run(() =>
+                {
+                    for (int i = 0; i < totalChunks; i++)
+                    {
+                        int offset = i * chunkSize;
+                        int size = Math.Min(chunkSize, combinedAudio.Length - offset);
+
+                        byte[] chunk = new byte[chunkSize];
+                        Buffer.BlockCopy(combinedAudio, offset, chunk, 0, size);
+
+                        if (!system.IsDvm)
+                        {
+                            IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                            AudioPacket voicePacket = new AudioPacket
+                            {
+                                Data = chunk,
+                                VoiceChannel = new VoiceChannel
+                                {
+                                    Frequency = channel.VoiceChannel,
+                                    DstId = cpgChannel.Tgid,
+                                    SrcId = system.Rid,
+                                    Site = system.Site
+                                },
+                                Site = system.Site,
+                                LopServerVocode = true
+                            };
+
+                            handler.SendMessage(voicePacket.GetData());
+                        }
+                        else
+                        {
+                            PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
+
+                            if (chunk.Length == 320)
+                            {
+                                P25EncodeAudioFrame(chunk, handler, channel, cpgChannel, system);
+                            }
+                        }
+                    }
+                });
+
+                double totalDurationMs = (toneADuration + toneBDuration) * 1000 + 750;
+                await Task.Delay((int)totalDurationMs);
+
+                if (!system.IsDvm)
+                {
+                    IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                    GRP_VCH_RLS release = new GRP_VCH_RLS
+                    {
+                        SrcId = system.Rid,
+                        DstId = cpgChannel.Tgid,
+                        Channel = channel.VoiceChannel,
+                        Site = system.Site
+                    };
+
+                    handler.SendMessage(release.GetData());
+                }
+                else
+                {
+                    PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
+
+                    await Task.Delay(4000);
+                    handler.SendP25TDU(uint.Parse(system.Rid), uint.Parse(cpgChannel.Tgid), false);
+                }
+
+                Dispatcher.Invoke(() =>
+                {
+                    channel.PageSelectButton.Background = channel.grayGradient;
+                });
             }
         }
 
