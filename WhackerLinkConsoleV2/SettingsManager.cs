@@ -30,6 +30,7 @@ namespace WhackerLinkConsoleV2
         public bool ShowSystemStatus { get; set; } = true;
         public bool ShowChannels { get; set; } = true;
         public bool ShowAlertTones { get; set; } = true;
+        public bool ShowQCTones { get; set; } = true;
 
         public string LastCodeplugPath { get; set; } = null;
 
@@ -37,6 +38,7 @@ namespace WhackerLinkConsoleV2
         public Dictionary<string, ChannelPosition> SystemStatusPositions { get; set; } = new Dictionary<string, ChannelPosition>();
         public List<string> AlertToneFilePaths { get; set; } = new List<string>();
         public Dictionary<string, ChannelPosition> AlertTonePositions { get; set; } = new Dictionary<string, ChannelPosition>();
+        public Dictionary<string, ChannelPosition> QCToneSetPositions { get; set; } = new Dictionary<string, ChannelPosition>();
         public Dictionary<string, int> ChannelOutputDevices { get; set; } = new Dictionary<string, int>();
 
         public void LoadSettings()
@@ -53,11 +55,13 @@ namespace WhackerLinkConsoleV2
                     ShowSystemStatus = loadedSettings.ShowSystemStatus;
                     ShowChannels = loadedSettings.ShowChannels;
                     ShowAlertTones = loadedSettings.ShowAlertTones;
+                    ShowQCTones = loadedSettings.ShowQCTones;
                     LastCodeplugPath = loadedSettings.LastCodeplugPath;
                     ChannelPositions = loadedSettings.ChannelPositions ?? new Dictionary<string, ChannelPosition>();
                     SystemStatusPositions = loadedSettings.SystemStatusPositions ?? new Dictionary<string, ChannelPosition>();
                     AlertToneFilePaths = loadedSettings.AlertToneFilePaths ?? new List<string>();
                     AlertTonePositions = loadedSettings.AlertTonePositions ?? new Dictionary<string, ChannelPosition>();
+                    QCToneSetPositions = loadedSettings.QCToneSetPositions ?? new Dictionary<string, ChannelPosition>();
                     ChannelOutputDevices = loadedSettings.ChannelOutputDevices ?? new Dictionary<string, int>();
                 }
             }
@@ -85,6 +89,12 @@ namespace WhackerLinkConsoleV2
         public void UpdateChannelPosition(string channelName, double x, double y)
         {
             ChannelPositions[channelName] = new ChannelPosition { X = x, Y = y };
+            SaveSettings();
+        }
+
+        public void UpdateQCToneSetPosition(string name, double x, double y)
+        {
+            QCToneSetPositions[name] = new ChannelPosition { X = x, Y = y };
             SaveSettings();
         }
 

@@ -27,6 +27,7 @@ namespace WhackerLinkConsoleV2
         public bool ShowSystemStatus { get; private set; } = true;
         public bool ShowChannels { get; private set; } = true;
         public bool ShowAlertTones { get; private set; } = true;
+        public bool ShowQCTones { get; private set; } = true;
 
         public WidgetSelectionWindow()
         {
@@ -38,6 +39,8 @@ namespace WhackerLinkConsoleV2
             ShowSystemStatus = SystemStatusCheckBox.IsChecked ?? false;
             ShowChannels = ChannelCheckBox.IsChecked ?? false;
             ShowAlertTones = AlertToneCheckBox.IsChecked ?? false;
+            ShowQCTones = QCTonesCheckBox.IsChecked ?? false;
+            
             DialogResult = true;
             Close();
         }
