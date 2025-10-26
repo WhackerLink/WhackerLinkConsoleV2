@@ -39,6 +39,11 @@ namespace WhackerLinkConsoleV2
         public Dictionary<string, ChannelPosition> AlertTonePositions { get; set; } = new Dictionary<string, ChannelPosition>();
         public Dictionary<string, int> ChannelOutputDevices { get; set; } = new Dictionary<string, int>();
 
+        // Global PTT Hotkey Settings
+        public bool EnableGlobalPttHotkey { get; set; } = false;
+        public int PttHotkeyModifiers { get; set; } = 0; // KeyModifier flags
+        public int PttHotkeyKey { get; set; } = 0; // Virtual key code
+
         public void LoadSettings()
         {
             if (!File.Exists(SettingsFilePath)) return;
@@ -59,6 +64,9 @@ namespace WhackerLinkConsoleV2
                     AlertToneFilePaths = loadedSettings.AlertToneFilePaths ?? new List<string>();
                     AlertTonePositions = loadedSettings.AlertTonePositions ?? new Dictionary<string, ChannelPosition>();
                     ChannelOutputDevices = loadedSettings.ChannelOutputDevices ?? new Dictionary<string, int>();
+                    EnableGlobalPttHotkey = loadedSettings.EnableGlobalPttHotkey;
+                    PttHotkeyModifiers = loadedSettings.PttHotkeyModifiers;
+                    PttHotkeyKey = loadedSettings.PttHotkeyKey;
                 }
             }
             catch (Exception ex)

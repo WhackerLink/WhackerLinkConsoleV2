@@ -70,6 +70,7 @@ namespace WhackerLinkConsoleV2
         private FlashingBackgroundManager _flashingManager;
         private WaveFilePlaybackManager _emergencyAlertPlayback;
         private WebSocketManager _webSocketManager = new WebSocketManager();
+        private GlobalHotkeyManager _hotkeyManager;
 
         private ChannelBox playbackChannelBox;
 
@@ -122,6 +123,11 @@ namespace WhackerLinkConsoleV2
 
             _selectedChannelsManager.SelectedChannelsChanged += SelectedChannelsChanged;
             Loaded += MainWindow_Loaded;
+
+            // Initialize global hotkey manager
+            _hotkeyManager = new GlobalHotkeyManager(this);
+            SourceInitialized += MainWindow_SourceInitialized;
+            Closing += MainWindow_Closing;
         }
 
         private void OpenCodeplug_Click(object sender, RoutedEventArgs e)
@@ -604,6 +610,12 @@ namespace WhackerLinkConsoleV2
 
             AudioSettingsWindow audioSettingsWindow = new AudioSettingsWindow(_settingsManager, _audioManager, channels);
             audioSettingsWindow.ShowDialog();
+        }
+
+        private void PttHotkeySettings_Click(object sender, RoutedEventArgs e)
+        {
+            PttHotkeySettingsWindow hotkeySettingsWindow = new PttHotkeySettingsWindow(_settingsManager, _hotkeyManager);
+            hotkeySettingsWindow.ShowDialog();
         }
 
         private void P25Page_Click(object sender, RoutedEventArgs e)
@@ -1460,6 +1472,36 @@ namespace WhackerLinkConsoleV2
             {
                 GenerateChannelWidgets();
             }
+        }
+
+        private void MainWindow_SourceInitialized(object sender, EventArgs e)
+        {
+            // Initialize the hotkey manager after the window handle is created
+            _hotkeyManager.Initialize();
+            _hotkeyManager.HotkeyPressed += OnGlobalPttHotkeyPressed;
+
+            // Register the hotkey if enabled in settings
+            if (_settingsManager.EnableGlobalPttHotkey && _settingsManager.PttHotkeyKey != 0)
+            {
+                var modifiers = (GlobalHotkeyManager.KeyModifier)_settingsManager.PttHotkeyModifiers;
+                var key = (System.Windows.Forms.Keys)_settingsManager.PttHotkeyKey;
+                _hotkeyManager.RegisterHotkey(modifiers, key);
+            }
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Clean up hotkey registration
+            _hotkeyManager?.Dispose();
+        }
+
+        private void OnGlobalPttHotkeyPressed(object sender, EventArgs e)
+        {
+            // Trigger the same logic as the global PTT button
+            Dispatcher.Invoke(() =>
+            {
+                btnGlobalPtt_Click(null, null);
+            });
         }
 
         private async void OnHoldTimerElapsed(object sender, ElapsedEventArgs e)
