@@ -1479,6 +1479,7 @@ namespace WhackerLinkConsoleV2
             // Initialize the hotkey manager after the window handle is created
             _hotkeyManager.Initialize();
             _hotkeyManager.HotkeyPressed += OnGlobalPttHotkeyPressed;
+            _hotkeyManager.HotkeyReleased += OnGlobalPttHotkeyReleased;
 
             // Register the hotkey if enabled in settings
             if (_settingsManager.EnableGlobalPttHotkey && _settingsManager.PttHotkeyKey != 0)
@@ -1497,11 +1498,113 @@ namespace WhackerLinkConsoleV2
 
         private void OnGlobalPttHotkeyPressed(object sender, EventArgs e)
         {
-            // Trigger the same logic as the global PTT button
+            // Start PTT when key is pressed (hold-to-talk)
             Dispatcher.Invoke(() =>
             {
-                btnGlobalPtt_Click(null, null);
+                SetGlobalPtt(true);
             });
+        }
+
+        private void OnGlobalPttHotkeyReleased(object sender, EventArgs e)
+        {
+            // Stop PTT when key is released (hold-to-talk)
+            Dispatcher.Invoke(() =>
+            {
+                SetGlobalPtt(false);
+            });
+        }
+
+        private async void SetGlobalPtt(bool state)
+        {
+            // Prevent duplicate state changes
+            if (globalPttState == state)
+                return;
+
+            if (globalPttState && state == false)
+                await Task.Delay(500);
+
+            globalPttState = state;
+
+            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+            {
+                if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                    continue;
+
+                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                if (!system.IsDvm)
+                {
+                    IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                    if (!channel.IsSelected)
+                        continue;
+
+                    if (globalPttState)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            btnGlobalPtt.Background = channel.redGradient;
+                        });
+
+                        GRP_VCH_REQ request = new GRP_VCH_REQ
+                        {
+                            SrcId = system.Rid,
+                            DstId = cpgChannel.Tgid,
+                            Site = system.Site
+                        };
+
+                        channel.PttState = true;
+
+                        handler.SendMessage(request.GetData());
+                    }
+                    else
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            btnGlobalPtt.Background = channel.grayGradient;
+                        });
+
+                        GRP_VCH_RLS release = new GRP_VCH_RLS
+                        {
+                            SrcId = system.Rid,
+                            DstId = cpgChannel.Tgid,
+                            Site = system.Site
+                        };
+
+                        channel.PttState = false;
+
+                        handler.SendMessage(release.GetData());
+                    }
+                }
+                else
+                {
+                    PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
+
+                    channel.txStreamId = handler.NewStreamId();
+
+                    if (globalPttState)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            btnGlobalPtt.Background = channel.redGradient;
+                            channel.PttState = true;
+                        });
+
+                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
+                    }
+                    else
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            btnGlobalPtt.Background = channel.grayGradient;
+                            channel.PttState = false;
+                        });
+
+                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
+                    }
+                }
+            }
         }
 
         private async void OnHoldTimerElapsed(object sender, ElapsedEventArgs e)
@@ -1597,93 +1700,10 @@ namespace WhackerLinkConsoleV2
             });
         }
 
-        private async void btnGlobalPtt_Click(object sender, RoutedEventArgs e)
+        private void btnGlobalPtt_Click(object sender, RoutedEventArgs e)
         {
-            if (globalPttState)
-                await Task.Delay(500);
-
-            globalPttState = !globalPttState;
-
-            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
-            {
-                if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
-                    continue;
-
-                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
-                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
-
-                if (!system.IsDvm)
-                {
-                    IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
-
-                    if (!channel.IsSelected)
-                        continue;
-
-                    if (globalPttState)
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            btnGlobalPtt.Background = channel.redGradient;
-                        });
-
-
-                        GRP_VCH_REQ request = new GRP_VCH_REQ
-                        {
-                            SrcId = system.Rid,
-                            DstId = cpgChannel.Tgid,
-                            Site = system.Site
-                        };
-
-                        channel.PttState = true;
-
-                        handler.SendMessage(request.GetData());
-                    }
-                    else
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            btnGlobalPtt.Background = channel.grayGradient;
-                        });
-
-                        GRP_VCH_RLS release = new GRP_VCH_RLS
-                        {
-                            SrcId = system.Rid,
-                            DstId = cpgChannel.Tgid,
-                            Site = system.Site
-                        };
-
-                        channel.PttState = false;
-
-                        handler.SendMessage(release.GetData());
-                    }
-                } else
-                {
-                    PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
-
-                    channel.txStreamId = handler.NewStreamId();
-
-                    if (globalPttState)
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            btnGlobalPtt.Background = channel.redGradient;
-                            channel.PttState = true;
-                        });
-
-                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
-                    }
-                    else
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            btnGlobalPtt.Background = channel.grayGradient;
-                            channel.PttState = false;
-                        });
-
-                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
-                    }
-                }
-            }
+            // Toggle PTT state when button is clicked
+            SetGlobalPtt(!globalPttState);
         }
 
         private void Button_Click(object sender, RoutedEventArgs e) { /* sub */ }

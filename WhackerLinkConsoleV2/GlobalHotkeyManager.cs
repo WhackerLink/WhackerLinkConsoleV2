@@ -19,24 +19,49 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Interop;
 
 namespace WhackerLinkConsoleV2
 {
     public class GlobalHotkeyManager
     {
         // Windows API Constants
-        private const int WM_HOTKEY = 0x0312;
-        private const int HOTKEY_ID = 9000;
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int WM_SYSKEYDOWN = 0x0104;
+        private const int WM_SYSKEYUP = 0x0105;
 
         // P/Invoke declarations
-        [DllImport("user32.dll")]
-        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
 
         [DllImport("user32.dll")]
-        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        private static extern short GetAsyncKeyState(int vKey);
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KBDLLHOOKSTRUCT
+        {
+            public int vkCode;
+            public int scanCode;
+            public int flags;
+            public int time;
+            public IntPtr dwExtraInfo;
+        }
 
         // Modifier key flags
         public enum KeyModifier
@@ -49,26 +74,26 @@ namespace WhackerLinkConsoleV2
         }
 
         private readonly Window _window;
-        private IntPtr _windowHandle;
-        private HwndSource _source;
+        private IntPtr _hookID = IntPtr.Zero;
+        private LowLevelKeyboardProc _proc;
         private bool _isRegistered;
 
+        private KeyModifier _modifiers = KeyModifier.None;
+        private System.Windows.Forms.Keys _key = System.Windows.Forms.Keys.None;
+        private bool _isHotkeyCurrentlyPressed = false;
+
         public event EventHandler HotkeyPressed;
+        public event EventHandler HotkeyReleased;
 
         public GlobalHotkeyManager(Window window)
         {
             _window = window;
+            _proc = HookCallback; // Keep a reference to prevent garbage collection
         }
 
         public void Initialize()
         {
-            // Get window handle
-            WindowInteropHelper helper = new WindowInteropHelper(_window);
-            _windowHandle = helper.Handle;
-
-            // Hook into the window's message processing
-            _source = HwndSource.FromHwnd(_windowHandle);
-            _source.AddHook(WndProc);
+            // No initialization needed for keyboard hook approach
         }
 
         public bool RegisterHotkey(KeyModifier modifiers, System.Windows.Forms.Keys key)
@@ -78,7 +103,17 @@ namespace WhackerLinkConsoleV2
 
             try
             {
-                _isRegistered = RegisterHotKey(_windowHandle, HOTKEY_ID, (uint)modifiers, (uint)key);
+                _modifiers = modifiers;
+                _key = key;
+
+                // Install the keyboard hook
+                using (Process curProcess = Process.GetCurrentProcess())
+                using (ProcessModule curModule = curProcess.MainModule)
+                {
+                    _hookID = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(curModule.ModuleName), 0);
+                }
+
+                _isRegistered = _hookID != IntPtr.Zero;
                 return _isRegistered;
             }
             catch (Exception ex)
@@ -90,28 +125,74 @@ namespace WhackerLinkConsoleV2
 
         public void UnregisterHotkey()
         {
-            if (_isRegistered)
+            if (_isRegistered && _hookID != IntPtr.Zero)
             {
-                UnregisterHotKey(_windowHandle, HOTKEY_ID);
+                UnhookWindowsHookEx(_hookID);
+                _hookID = IntPtr.Zero;
                 _isRegistered = false;
+                _isHotkeyCurrentlyPressed = false;
             }
         }
 
-        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
+            if (nCode >= 0)
             {
-                HotkeyPressed?.Invoke(this, EventArgs.Empty);
-                handled = true;
+                int vkCode = Marshal.ReadInt32(lParam);
+                bool isKeyDown = (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN);
+                bool isKeyUp = (wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP);
+
+                // Check if this is our configured key
+                if (vkCode == (int)_key)
+                {
+                    if (isKeyDown && !_isHotkeyCurrentlyPressed)
+                    {
+                        // Check if all required modifiers are pressed
+                        if (AreModifiersPressed(_modifiers))
+                        {
+                            _isHotkeyCurrentlyPressed = true;
+                            _window.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                HotkeyPressed?.Invoke(this, EventArgs.Empty);
+                            }));
+                        }
+                    }
+                    else if (isKeyUp && _isHotkeyCurrentlyPressed)
+                    {
+                        _isHotkeyCurrentlyPressed = false;
+                        _window.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            HotkeyReleased?.Invoke(this, EventArgs.Empty);
+                        }));
+                    }
+                }
             }
 
-            return IntPtr.Zero;
+            return CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+
+        private bool AreModifiersPressed(KeyModifier modifiers)
+        {
+            bool ctrlPressed = (GetAsyncKeyState(0x11) & 0x8000) != 0; // VK_CONTROL
+            bool altPressed = (GetAsyncKeyState(0x12) & 0x8000) != 0;  // VK_MENU (Alt)
+            bool shiftPressed = (GetAsyncKeyState(0x10) & 0x8000) != 0; // VK_SHIFT
+            bool winPressed = (GetAsyncKeyState(0x5B) & 0x8000) != 0 || (GetAsyncKeyState(0x5C) & 0x8000) != 0; // VK_LWIN or VK_RWIN
+
+            bool ctrlNeeded = (modifiers & KeyModifier.Control) != 0;
+            bool altNeeded = (modifiers & KeyModifier.Alt) != 0;
+            bool shiftNeeded = (modifiers & KeyModifier.Shift) != 0;
+            bool winNeeded = (modifiers & KeyModifier.Win) != 0;
+
+            // All required modifiers must be pressed, and no unrequired modifiers should be pressed
+            return (ctrlNeeded == ctrlPressed) &&
+                   (altNeeded == altPressed) &&
+                   (shiftNeeded == shiftPressed) &&
+                   (winNeeded == winPressed);
         }
 
         public void Dispose()
         {
             UnregisterHotkey();
-            _source?.RemoveHook(WndProc);
         }
     }
 }
