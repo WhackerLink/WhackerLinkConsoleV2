@@ -18,6 +18,7 @@
 * 
 */
 
+using System;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -25,7 +26,10 @@ namespace WhackerLinkConsoleV2
 {
     public class SettingsManager
     {
-        private const string SettingsFilePath = "UserSettings.json";
+        private static readonly string SettingsFilePath = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "UserSettings.json"
+        );
 
         public bool ShowSystemStatus { get; set; } = true;
         public bool ShowChannels { get; set; } = true;
