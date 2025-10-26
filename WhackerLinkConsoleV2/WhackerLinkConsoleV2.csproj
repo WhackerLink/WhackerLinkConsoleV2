@@ -101,6 +101,16 @@
     </Page>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="PttHotkeySettingsWindow.xaml.cs">
+      <DependentUpon>PttHotkeySettingsWindow.xaml</DependentUpon>
+    </Compile>
+    <Page Include="PttHotkeySettingsWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+
 
 
 </Project>
