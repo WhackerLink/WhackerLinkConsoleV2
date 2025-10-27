@@ -44,11 +44,12 @@ echo Building self-contained standalone executable...
 echo This may take a few minutes...
 echo.
 
-REM Publish as self-contained with single-file option
-dotnet publish "%~dp0WhackerLinkConsoleV2.sln" ^
+REM Publish as self-contained with explicit output directory
+dotnet publish "%~dp0WhackerLinkConsoleV2\WhackerLinkConsoleV2.csproj" ^
     --configuration %CONFIG% ^
     --runtime %RUNTIME% ^
     --self-contained true ^
+    --output "%OUTPUT_DIR%" ^
     -p:PublishSingleFile=false ^
     -p:IncludeNativeLibrariesForSelfExtract=true ^
     -p:EnableCompressionInSingleFile=true

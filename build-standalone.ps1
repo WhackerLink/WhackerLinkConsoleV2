@@ -51,12 +51,13 @@ Write-Host "Building self-contained standalone executable..." -ForegroundColor C
 Write-Host "This may take a few minutes..." -ForegroundColor Yellow
 Write-Host ""
 
-# Publish as self-contained
-$solutionPath = Join-Path $scriptDir "WhackerLinkConsoleV2.sln"
-dotnet publish $solutionPath `
+# Publish as self-contained with explicit output directory
+$projectPath = Join-Path $scriptDir "WhackerLinkConsoleV2\WhackerLinkConsoleV2.csproj"
+dotnet publish $projectPath `
     --configuration $config `
     --runtime $runtime `
     --self-contained true `
+    --output $outputDir `
     -p:PublishSingleFile=false `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true
