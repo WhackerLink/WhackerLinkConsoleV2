@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WhackerLink">
+    <meta name="theme-color" content="#1a1a2e">
+
+    <title>WhackerLink Mobile</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Connection Status Bar -->
+    <div id="status-bar" class="status-bar disconnected">
+        <span id="status-text">Disconnected</span>
+        <span id="rid-display"></span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Settings Panel -->
+        <div id="settings-panel" class="panel">
+            <h2>Settings</h2>
+
+            <div class="form-group">
+                <label for="server-address">Server Address</label>
+                <input type="text" id="server-address" placeholder="ws://localhost:3131" value="ws://localhost:3131">
+            </div>
+
+            <div class="form-group">
+                <label for="dispatcher-rid">Dispatcher RID</label>
+                <input type="number" id="dispatcher-rid" placeholder="Enter your RID">
+            </div>
+
+            <div class="form-group">
+                <label for="dispatcher-name">Your Name</label>
+                <input type="text" id="dispatcher-name" placeholder="Dispatcher 1">
+            </div>
+
+            <button id="connect-btn" class="btn btn-primary">Connect</button>
+            <button id="disconnect-btn" class="btn btn-secondary" style="display:none;">Disconnect</button>
+        </div>
+
+        <!-- Channels Panel -->
+        <div id="channels-panel" class="panel" style="display:none;">
+            <h2>Talkgroups</h2>
+            <div id="channels-list" class="channels-list">
+                <!-- Channels will be populated dynamically -->
+            </div>
+
+            <button id="back-to-settings" class="btn btn-secondary">Settings</button>
+        </div>
+
+        <!-- PTT Panel -->
+        <div id="ptt-panel" class="panel" style="display:none;">
+            <div class="ptt-container">
+                <h2 id="selected-channel-name">No Channel Selected</h2>
+
+                <div class="ptt-status">
+                    <div id="ptt-indicator" class="ptt-indicator idle">IDLE</div>
+                </div>
+
+                <!-- PTT Button -->
+                <button id="ptt-button" class="ptt-button">
+                    <div class="ptt-button-inner">
+                        <span class="ptt-icon">🎤</span>
+                        <span class="ptt-text">HOLD TO TALK</span>
+                    </div>
+                </button>
+
+                <div class="info-text">
+                    <p><strong>RID:</strong> <span id="current-rid">-</span></p>
+                    <p><strong>TG:</strong> <span id="current-tgid">-</span></p>
+                    <p><strong>Site:</strong> <span id="current-site">-</span></p>
+                </div>
+
+                <div class="button-group">
+                    <button id="change-channel" class="btn btn-secondary">Change Channel</button>
+                    <button id="disconnect-from-ptt" class="btn btn-secondary">Disconnect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
