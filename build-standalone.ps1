@@ -72,32 +72,28 @@ Write-Host ""
 Write-Host "✓ Build successful!" -ForegroundColor Green
 Write-Host ""
 
-# Copy Audio files to output
-Write-Host "Copying Audio files..." -ForegroundColor Yellow
+# Copy Audio files to root output directory
+Write-Host "Copying Audio files to root..." -ForegroundColor Yellow
 $audioSourceDir = Join-Path $projectDir "Audio"
 if (Test-Path $audioSourceDir) {
-    $audioOutputDir = Join-Path $outputDir "Audio"
-    if (-not (Test-Path $audioOutputDir)) {
-        New-Item -ItemType Directory -Path $audioOutputDir | Out-Null
-    }
-    Copy-Item "$audioSourceDir\*.*" $audioOutputDir -Force
-    Write-Host "  ✓ Audio files copied" -ForegroundColor Green
+    Copy-Item "$audioSourceDir\*.wav" $outputDir -Force
+    Write-Host "  ✓ Audio files copied to root" -ForegroundColor Green
 } else {
     Write-Host "  ! Audio folder not found" -ForegroundColor Yellow
 }
 
-# Copy entire codeplugs directory to output
-Write-Host "Copying codeplugs directory..." -ForegroundColor Yellow
-$codeplugsSourceDir = Join-Path $projectDir "codeplugs"
-if (Test-Path $codeplugsSourceDir) {
-    $outputCodeplugsDir = Join-Path $outputDir "codeplugs"
-    if (-not (Test-Path $outputCodeplugsDir)) {
-        New-Item -ItemType Directory -Path $outputCodeplugsDir | Out-Null
-    }
-    Copy-Item "$codeplugsSourceDir\*.*" $outputCodeplugsDir -Force
-    Write-Host "  ✓ Codeplugs copied" -ForegroundColor Green
+# Copy gabagool.yml to root output directory
+Write-Host "Copying gabagool.yml to root..." -ForegroundColor Yellow
+$gabagoolPath = Join-Path $projectDir "codeplugs\gabagool.yml"
+$codeplugPath = Join-Path $projectDir "codeplugs\codeplug.yml"
+if (Test-Path $gabagoolPath) {
+    Copy-Item $gabagoolPath (Join-Path $outputDir "gabagool.yml") -Force
+    Write-Host "  ✓ gabagool.yml copied to root" -ForegroundColor Green
+} elseif (Test-Path $codeplugPath) {
+    Copy-Item $codeplugPath (Join-Path $outputDir "gabagool.yml") -Force
+    Write-Host "  ✓ codeplug.yml copied as gabagool.yml to root" -ForegroundColor Green
 } else {
-    Write-Host "  ! Codeplugs folder not found" -ForegroundColor Yellow
+    Write-Host "  ! No codeplug file found" -ForegroundColor Yellow
 }
 
 # Restore UserSettings.json to output directory
@@ -108,13 +104,12 @@ if (Test-Path $backupUserSettings) {
     Write-Host "  ✓ UserSettings.json restored" -ForegroundColor Green
 }
 
-# Restore gabagool.yml if it was backed up (overrides the copied codeplug)
+# Restore gabagool.yml if it was backed up (overrides the copied version)
 $backupGabagool = Join-Path $backupDir "gabagool.yml"
 if (Test-Path $backupGabagool) {
-    $outputCodeplugsDir = Join-Path $outputDir "codeplugs"
-    Write-Host "Restoring gabagool.yml to output..." -ForegroundColor Yellow
-    Copy-Item $backupGabagool (Join-Path $outputCodeplugsDir "gabagool.yml")
-    Write-Host "  ✓ gabagool.yml restored" -ForegroundColor Green
+    Write-Host "Restoring gabagool.yml to root..." -ForegroundColor Yellow
+    Copy-Item $backupGabagool (Join-Path $outputDir "gabagool.yml")
+    Write-Host "  ✓ gabagool.yml restored to root" -ForegroundColor Green
 }
 
 # Restore auth_keys.yml to output directory
@@ -156,14 +151,11 @@ Write-Host ""
 if (Test-Path (Join-Path $outputDir "UserSettings.json")) {
     Write-Host "  ✓ UserSettings.json" -ForegroundColor Green
 }
-if (Test-Path (Join-Path $outputDir "codeplugs\codeplug.yml")) {
-    Write-Host "  ✓ codeplugs\codeplug.yml" -ForegroundColor Green
+if (Test-Path (Join-Path $outputDir "gabagool.yml")) {
+    Write-Host "  ✓ gabagool.yml" -ForegroundColor Green
 }
-if (Test-Path (Join-Path $outputDir "codeplugs\gabagool.yml")) {
-    Write-Host "  ✓ codeplugs\gabagool.yml" -ForegroundColor Green
-}
-if (Test-Path (Join-Path $outputDir "Audio\emergency.wav")) {
-    Write-Host "  ✓ Audio files" -ForegroundColor Green
+if (Test-Path (Join-Path $outputDir "emergency.wav")) {
+    Write-Host "  ✓ Audio files (*.wav)" -ForegroundColor Green
 }
 if (Test-Path (Join-Path $outputDir "auth_keys.yml")) {
     Write-Host "  ✓ auth_keys.yml" -ForegroundColor Green

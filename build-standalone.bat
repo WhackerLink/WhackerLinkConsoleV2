@@ -64,24 +64,25 @@ echo.
 echo ✓ Build successful!
 echo.
 
-REM Copy Audio files to output
-echo Copying Audio files...
+REM Copy Audio files to root output directory
+echo Copying Audio files to root...
 if exist "%PROJECT_DIR%\Audio" (
-    if not exist "%OUTPUT_DIR%\Audio" mkdir "%OUTPUT_DIR%\Audio"
-    xcopy "%PROJECT_DIR%\Audio\*.*" "%OUTPUT_DIR%\Audio\" /Y /Q >nul
-    echo   ✓ Audio files copied
+    xcopy "%PROJECT_DIR%\Audio\*.wav" "%OUTPUT_DIR%\" /Y /Q >nul
+    echo   ✓ Audio files copied to root
 ) else (
     echo   ! Audio folder not found
 )
 
-REM Copy entire codeplugs directory to output
-echo Copying codeplugs directory...
-if exist "%PROJECT_DIR%\codeplugs" (
-    if not exist "%OUTPUT_DIR%\codeplugs" mkdir "%OUTPUT_DIR%\codeplugs"
-    xcopy "%PROJECT_DIR%\codeplugs\*.*" "%OUTPUT_DIR%\codeplugs\" /Y /Q >nul
-    echo   ✓ Codeplugs copied
+REM Copy gabagool.yml to root output directory
+echo Copying gabagool.yml to root...
+if exist "%PROJECT_DIR%\codeplugs\gabagool.yml" (
+    copy "%PROJECT_DIR%\codeplugs\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
+    echo   ✓ gabagool.yml copied to root
+) else if exist "%PROJECT_DIR%\codeplugs\codeplug.yml" (
+    copy "%PROJECT_DIR%\codeplugs\codeplug.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
+    echo   ✓ codeplug.yml copied as gabagool.yml to root
 ) else (
-    echo   ! Codeplugs folder not found
+    echo   ! No codeplug file found
 )
 
 REM Restore UserSettings.json to output directory
@@ -91,11 +92,11 @@ if exist "%BACKUP_DIR%\UserSettings.json" (
     echo   ✓ UserSettings.json restored
 )
 
-REM Restore gabagool.yml if it was backed up (overrides the copied codeplug)
+REM Restore gabagool.yml if it was backed up (overrides the copied version)
 if exist "%BACKUP_DIR%\gabagool.yml" (
-    echo Restoring gabagool.yml to output...
-    copy "%BACKUP_DIR%\gabagool.yml" "%OUTPUT_DIR%\codeplugs\gabagool.yml" >nul
-    echo   ✓ gabagool.yml restored
+    echo Restoring gabagool.yml to root...
+    copy "%BACKUP_DIR%\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" >nul
+    echo   ✓ gabagool.yml restored to root
 )
 
 REM Restore auth_keys.yml to output directory
@@ -133,9 +134,8 @@ echo Folder size: ~%SIZE% bytes
 echo.
 
 if exist "%OUTPUT_DIR%\UserSettings.json" echo   ✓ UserSettings.json
-if exist "%OUTPUT_DIR%\codeplugs\codeplug.yml" echo   ✓ codeplugs\codeplug.yml
-if exist "%OUTPUT_DIR%\codeplugs\gabagool.yml" echo   ✓ codeplugs\gabagool.yml
-if exist "%OUTPUT_DIR%\Audio\emergency.wav" echo   ✓ Audio files
+if exist "%OUTPUT_DIR%\gabagool.yml" echo   ✓ gabagool.yml
+if exist "%OUTPUT_DIR%\emergency.wav" echo   ✓ Audio files (*.wav)
 if exist "%OUTPUT_DIR%\auth_keys.yml" echo   ✓ auth_keys.yml
 echo.
 echo Press any key to open the output folder...
