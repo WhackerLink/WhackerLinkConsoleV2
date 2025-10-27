@@ -79,14 +79,18 @@ echo Copying gabagool.yml to root...
 if exist "%PROJECT_DIR%\gabagool.yml" (
     copy "%PROJECT_DIR%\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
     echo   ✓ gabagool.yml copied to root
-) else if exist "%PROJECT_DIR%\codeplugs\gabagool.yml" (
-    copy "%PROJECT_DIR%\codeplugs\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
-    echo   ✓ gabagool.yml (from codeplugs) copied to root
-) else if exist "%PROJECT_DIR%\codeplugs\codeplug.yml" (
-    copy "%PROJECT_DIR%\codeplugs\codeplug.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
-    echo   ✓ codeplug.yml copied as gabagool.yml to root
 ) else (
-    echo   ! No codeplug file found
+    if exist "%PROJECT_DIR%\codeplugs\gabagool.yml" (
+        copy "%PROJECT_DIR%\codeplugs\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
+        echo   ✓ gabagool.yml (from codeplugs) copied to root
+    ) else (
+        if exist "%PROJECT_DIR%\codeplugs\codeplug.yml" (
+            copy "%PROJECT_DIR%\codeplugs\codeplug.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
+            echo   ✓ codeplug.yml copied as gabagool.yml to root
+        ) else (
+            echo   ! No codeplug file found
+        )
+    )
 )
 
 REM Restore UserSettings.json to output directory
