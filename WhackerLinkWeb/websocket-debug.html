@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhackerLink WebSocket Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        input { padding: 8px; margin: 5px; font-size: 14px; width: 400px; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        #log {
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            height: 500px;
+            overflow-y: auto;
+            background: #000;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #0ff; }
+        .warning { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>WhackerLink WebSocket Debug Tool</h1>
+
+    <div>
+        <label>Server URL:<br>
+        <input type="text" id="server" value="ws://fivem.joinslrp.org:3131"></label><br>
+
+        <label>Auth Key:<br>
+        <input type="text" id="authKey" value="cf0dc3655ab46ba4dfc82a98e1638802ad24d494f865f1e00867d78b67c6d765"></label><br>
+
+        <label>RID:<br>
+        <input type="text" id="rid" value="12345"></label>
+    </div>
+
+    <div>
+        <button onclick="testConnection()">Connect & Test</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div id="log"></div>
+
+    <script>
+        let ws = null;
+        let connectionStartTime = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds();
+            const elapsed = connectionStartTime ? ((Date.now() - connectionStartTime) / 1000).toFixed(3) + 's' : '';
+            logDiv.innerHTML += `<div class="${type}">[${time}] ${elapsed ? '[+' + elapsed + ']' : ''} ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function testConnection() {
+            const server = document.getElementById('server').value;
+            const authKey = document.getElementById('authKey').value;
+            const rid = document.getElementById('rid').value;
+
+            clearLog();
+            connectionStartTime = Date.now();
+
+            log('=== WhackerLink Connection Test ===', 'info');
+            log(`Server: ${server}`, 'info');
+            log(`RID: ${rid}`, 'info');
+            log(`Auth Key: ${authKey.substring(0, 16)}...`, 'info');
+            log('', 'info');
+
+            log('Creating WebSocket connection...', 'info');
+
+            try {
+                ws = new WebSocket(server);
+                log('✓ WebSocket object created', 'success');
+                log(`  ReadyState: ${ws.readyState} (0=CONNECTING)`, 'info');
+
+                ws.binaryType = 'arraybuffer';
+                log(`✓ Binary type set to: ${ws.binaryType}`, 'success');
+
+                ws.onopen = () => {
+                    const elapsed = ((Date.now() - connectionStartTime) / 1000).toFixed(3);
+                    log('', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
+                    log(`✓✓✓ WEBSOCKET OPENED (${elapsed}s) ✓✓✓`, 'success');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
+                    log(`  ReadyState: ${ws.readyState} (1=OPEN)`, 'success');
+                    log(`  Protocol: ${ws.protocol || '(none)'}`, 'info');
+                    log(`  Extensions: ${ws.extensions || '(none)'}`, 'info');
+                    log('', 'info');
+
+                    // Send authentication
+                    const authMsg = {
+                        type: 'AUTH',
+                        authKey: authKey,
+                        srcId: rid
+                    };
+                    const authStr = JSON.stringify(authMsg);
+
+                    log('📤 Sending AUTH message:', 'info');
+                    log(`   ${authStr}`, 'info');
+
+                    try {
+                        ws.send(authStr);
+                        log('✓ AUTH message sent successfully', 'success');
+                    } catch (e) {
+                        log(`✗ Failed to send AUTH: ${e.message}`, 'error');
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    log('', 'info');
+                    log('📥 RECEIVED MESSAGE:', 'success');
+
+                    if (typeof event.data === 'string') {
+                        log(`   Type: Text/JSON`, 'info');
+                        log(`   Data: ${event.data}`, 'success');
+
+                        try {
+                            const parsed = JSON.parse(event.data);
+                            log(`   Parsed:`, 'info');
+                            log(`   ${JSON.stringify(parsed, null, 2)}`, 'info');
+                        } catch (e) {
+                            log(`   (Not valid JSON)`, 'warning');
+                        }
+                    } else if (event.data instanceof ArrayBuffer) {
+                        const bytes = new Uint8Array(event.data);
+                        log(`   Type: Binary`, 'info');
+                        log(`   Length: ${bytes.length} bytes`, 'info');
+                        log(`   Hex: ${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ')}`, 'info');
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    log('', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'error');
+                    log('✗✗✗ WEBSOCKET ERROR ✗✗✗', 'error');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'error');
+                    log(`  Event: ${JSON.stringify(error)}`, 'error');
+                    log(`  ReadyState: ${ws.readyState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`, 'error');
+                    log('', 'info');
+                    log('Possible causes:', 'warning');
+                    log('  1. Server is not a WebSocket server', 'warning');
+                    log('  2. Server requires specific headers/protocol', 'warning');
+                    log('  3. CORS/security policy blocking connection', 'warning');
+                    log('  4. Server immediately rejecting connection', 'warning');
+                };
+
+                ws.onclose = (event) => {
+                    const elapsed = connectionStartTime ? ((Date.now() - connectionStartTime) / 1000).toFixed(3) : '?';
+                    log('', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'warning');
+                    log(`✗ WEBSOCKET CLOSED (${elapsed}s)`, 'warning');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'warning');
+                    log(`  Code: ${event.code}`, 'warning');
+                    log(`  Reason: ${event.reason || '(no reason given)'}`, 'warning');
+                    log(`  Clean: ${event.wasClean}`, 'warning');
+                    log(`  ReadyState: ${ws.readyState} (3=CLOSED)`, 'warning');
+                    log('', 'info');
+
+                    // Decode close codes
+                    const closeCodes = {
+                        1000: 'Normal Closure',
+                        1001: 'Going Away',
+                        1002: 'Protocol Error',
+                        1003: 'Unsupported Data',
+                        1005: 'No Status Received',
+                        1006: 'Abnormal Closure (no close frame)',
+                        1007: 'Invalid Frame Payload Data',
+                        1008: 'Policy Violation',
+                        1009: 'Message Too Big',
+                        1010: 'Mandatory Extension',
+                        1011: 'Internal Server Error',
+                        1015: 'TLS Handshake Failure'
+                    };
+
+                    if (closeCodes[event.code]) {
+                        log(`  Meaning: ${closeCodes[event.code]}`, 'warning');
+                    }
+
+                    if (event.code === 1006) {
+                        log('', 'info');
+                        log('Code 1006 means:', 'error');
+                        log('  - Connection dropped without proper close handshake', 'error');
+                        log('  - Server might not be a WebSocket server', 'error');
+                        log('  - Network/firewall issue', 'error');
+                        log('  - Server crashed/rejected connection', 'error');
+                    }
+                };
+
+            } catch (error) {
+                log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'error');
+                log('✗ EXCEPTION CREATING WEBSOCKET', 'error');
+                log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'error');
+                log(`  ${error.toString()}`, 'error');
+                log(`  Stack: ${error.stack}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                log('', 'info');
+                log('Manually closing connection...', 'warning');
+                ws.close(1000, 'User requested disconnect');
+                ws = null;
+            } else {
+                log('No active connection', 'warning');
+            }
+        }
+    </script>
+</body>
+</html>
