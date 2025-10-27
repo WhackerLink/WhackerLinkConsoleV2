@@ -75,7 +75,15 @@
             log('Creating WebSocket connection...', 'info');
 
             try {
-                ws = new WebSocket(server);
+                // Build WebSocket URL with auth key as query parameter
+                let wsUrl = server;
+                if (authKey) {
+                    const separator = server.includes('?') ? '&' : '?';
+                    wsUrl = `${server}${separator}authKey=${encodeURIComponent(authKey)}&rid=${encodeURIComponent(rid)}`;
+                    log(`  Full URL: ${wsUrl.substring(0, 60)}...`, 'info');
+                }
+
+                ws = new WebSocket(wsUrl);
                 log('✓ WebSocket object created', 'success');
                 log(`  ReadyState: ${ws.readyState} (0=CONNECTING)`, 'info');
 

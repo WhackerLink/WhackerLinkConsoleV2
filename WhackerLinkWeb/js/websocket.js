@@ -29,7 +29,15 @@ class WhackerLinkWebSocket {
         this.rid = rid;
 
         try {
-            this.ws = new WebSocket(serverAddress);
+            // Build WebSocket URL with auth key as query parameter if provided
+            let wsUrl = serverAddress;
+            if (this.authKey) {
+                const separator = serverAddress.includes('?') ? '&' : '?';
+                wsUrl = `${serverAddress}${separator}authKey=${encodeURIComponent(this.authKey)}&rid=${encodeURIComponent(this.rid)}`;
+            }
+
+            console.log('Connecting to:', wsUrl.replace(this.authKey, '***'));
+            this.ws = new WebSocket(wsUrl);
             this.ws.binaryType = 'arraybuffer';
 
             this.ws.onopen = () => this.handleOpen();
