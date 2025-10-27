@@ -76,21 +76,28 @@ if exist "%PROJECT_DIR%\Audio" (
 
 REM Copy gabagool.yml to root output directory
 echo Copying gabagool.yml to root...
+set GABAGOOL_FOUND=0
 if exist "%PROJECT_DIR%\gabagool.yml" (
-    copy "%PROJECT_DIR%\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
-    echo   ✓ gabagool.yml copied to root
-) else (
+    copy "%PROJECT_DIR%\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul 2>&1
+    echo   ✓ gabagool.yml copied from project root
+    set GABAGOOL_FOUND=1
+)
+if %GABAGOOL_FOUND%==0 (
     if exist "%PROJECT_DIR%\codeplugs\gabagool.yml" (
-        copy "%PROJECT_DIR%\codeplugs\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
-        echo   ✓ gabagool.yml (from codeplugs) copied to root
-    ) else (
-        if exist "%PROJECT_DIR%\codeplugs\codeplug.yml" (
-            copy "%PROJECT_DIR%\codeplugs\codeplug.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul
-            echo   ✓ codeplug.yml copied as gabagool.yml to root
-        ) else (
-            echo   ! No codeplug file found
-        )
+        copy "%PROJECT_DIR%\codeplugs\gabagool.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul 2>&1
+        echo   ✓ gabagool.yml copied from codeplugs folder
+        set GABAGOOL_FOUND=1
     )
+)
+if %GABAGOOL_FOUND%==0 (
+    if exist "%PROJECT_DIR%\codeplugs\codeplug.yml" (
+        copy "%PROJECT_DIR%\codeplugs\codeplug.yml" "%OUTPUT_DIR%\gabagool.yml" /Y >nul 2>&1
+        echo   ✓ codeplug.yml copied as gabagool.yml
+        set GABAGOOL_FOUND=1
+    )
+)
+if %GABAGOOL_FOUND%==0 (
+    echo   ! No codeplug file found
 )
 
 REM Restore UserSettings.json to output directory
