@@ -30,8 +30,8 @@ if (Test-Path $userSettingsPath) {
     Write-Host "  ✓ UserSettings.json backed up" -ForegroundColor Green
 }
 
-# Backup gabagool.yml if it exists in codeplugs
-$gabagoolPath = Join-Path $projectDir "codeplugs\gabagool.yml"
+# Backup gabagool.yml if it exists in project root
+$gabagoolPath = Join-Path $projectDir "gabagool.yml"
 if (Test-Path $gabagoolPath) {
     Write-Host "Backing up gabagool.yml..." -ForegroundColor Yellow
     Copy-Item $gabagoolPath (Join-Path $backupDir "gabagool.yml")
@@ -85,11 +85,16 @@ if (Test-Path $audioSourceDir) {
 
 # Copy gabagool.yml to root output directory
 Write-Host "Copying gabagool.yml to root..." -ForegroundColor Yellow
-$gabagoolPath = Join-Path $projectDir "codeplugs\gabagool.yml"
+$gabagoolPath = Join-Path $projectDir "gabagool.yml"
+$codeplugsGabagoolPath = Join-Path $projectDir "codeplugs\gabagool.yml"
 $codeplugPath = Join-Path $projectDir "codeplugs\codeplug.yml"
+
 if (Test-Path $gabagoolPath) {
     Copy-Item $gabagoolPath (Join-Path $outputDir "gabagool.yml") -Force
     Write-Host "  ✓ gabagool.yml copied to root" -ForegroundColor Green
+} elseif (Test-Path $codeplugsGabagoolPath) {
+    Copy-Item $codeplugsGabagoolPath (Join-Path $outputDir "gabagool.yml") -Force
+    Write-Host "  ✓ gabagool.yml (from codeplugs) copied to root" -ForegroundColor Green
 } elseif (Test-Path $codeplugPath) {
     Copy-Item $codeplugPath (Join-Path $outputDir "gabagool.yml") -Force
     Write-Host "  ✓ codeplug.yml copied as gabagool.yml to root" -ForegroundColor Green
