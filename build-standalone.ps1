@@ -72,6 +72,34 @@ Write-Host ""
 Write-Host "✓ Build successful!" -ForegroundColor Green
 Write-Host ""
 
+# Copy Audio files to output
+Write-Host "Copying Audio files..." -ForegroundColor Yellow
+$audioSourceDir = Join-Path $projectDir "Audio"
+if (Test-Path $audioSourceDir) {
+    $audioOutputDir = Join-Path $outputDir "Audio"
+    if (-not (Test-Path $audioOutputDir)) {
+        New-Item -ItemType Directory -Path $audioOutputDir | Out-Null
+    }
+    Copy-Item "$audioSourceDir\*.*" $audioOutputDir -Force
+    Write-Host "  ✓ Audio files copied" -ForegroundColor Green
+} else {
+    Write-Host "  ! Audio folder not found" -ForegroundColor Yellow
+}
+
+# Copy entire codeplugs directory to output
+Write-Host "Copying codeplugs directory..." -ForegroundColor Yellow
+$codeplugsSourceDir = Join-Path $projectDir "codeplugs"
+if (Test-Path $codeplugsSourceDir) {
+    $outputCodeplugsDir = Join-Path $outputDir "codeplugs"
+    if (-not (Test-Path $outputCodeplugsDir)) {
+        New-Item -ItemType Directory -Path $outputCodeplugsDir | Out-Null
+    }
+    Copy-Item "$codeplugsSourceDir\*.*" $outputCodeplugsDir -Force
+    Write-Host "  ✓ Codeplugs copied" -ForegroundColor Green
+} else {
+    Write-Host "  ! Codeplugs folder not found" -ForegroundColor Yellow
+}
+
 # Restore UserSettings.json to output directory
 $backupUserSettings = Join-Path $backupDir "UserSettings.json"
 if (Test-Path $backupUserSettings) {
@@ -80,13 +108,10 @@ if (Test-Path $backupUserSettings) {
     Write-Host "  ✓ UserSettings.json restored" -ForegroundColor Green
 }
 
-# Restore gabagool.yml to output codeplugs directory
+# Restore gabagool.yml if it was backed up (overrides the copied codeplug)
 $backupGabagool = Join-Path $backupDir "gabagool.yml"
 if (Test-Path $backupGabagool) {
     $outputCodeplugsDir = Join-Path $outputDir "codeplugs"
-    if (-not (Test-Path $outputCodeplugsDir)) {
-        New-Item -ItemType Directory -Path $outputCodeplugsDir | Out-Null
-    }
     Write-Host "Restoring gabagool.yml to output..." -ForegroundColor Yellow
     Copy-Item $backupGabagool (Join-Path $outputCodeplugsDir "gabagool.yml")
     Write-Host "  ✓ gabagool.yml restored" -ForegroundColor Green
@@ -131,8 +156,14 @@ Write-Host ""
 if (Test-Path (Join-Path $outputDir "UserSettings.json")) {
     Write-Host "  ✓ UserSettings.json" -ForegroundColor Green
 }
+if (Test-Path (Join-Path $outputDir "codeplugs\codeplug.yml")) {
+    Write-Host "  ✓ codeplugs\codeplug.yml" -ForegroundColor Green
+}
 if (Test-Path (Join-Path $outputDir "codeplugs\gabagool.yml")) {
     Write-Host "  ✓ codeplugs\gabagool.yml" -ForegroundColor Green
+}
+if (Test-Path (Join-Path $outputDir "Audio\emergency.wav")) {
+    Write-Host "  ✓ Audio files" -ForegroundColor Green
 }
 if (Test-Path (Join-Path $outputDir "auth_keys.yml")) {
     Write-Host "  ✓ auth_keys.yml" -ForegroundColor Green
