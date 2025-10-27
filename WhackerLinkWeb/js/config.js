@@ -8,7 +8,6 @@ const Config = {
     STORAGE_KEY_SERVER: 'wl_server_address',
     STORAGE_KEY_AUTH_KEY: 'wl_auth_key',
     STORAGE_KEY_RID: 'wl_dispatcher_rid',
-    STORAGE_KEY_NAME: 'wl_dispatcher_name',
     STORAGE_KEY_SELECTED_CHANNEL: 'wl_selected_channel',
 
     // WebSocket message types
