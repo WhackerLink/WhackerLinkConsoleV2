@@ -618,6 +618,12 @@ namespace WhackerLinkConsoleV2
             hotkeySettingsWindow.ShowDialog();
         }
 
+        private void DispatcherRidSettings_Click(object sender, RoutedEventArgs e)
+        {
+            DispatcherRidSettingsWindow ridSettingsWindow = new DispatcherRidSettingsWindow(_settingsManager);
+            ridSettingsWindow.ShowDialog();
+        }
+
         private void P25Page_Click(object sender, RoutedEventArgs e)
         {
             DigitalPageWindow pageWindow = new DigitalPageWindow(Codeplug.Systems);
@@ -1472,6 +1478,23 @@ namespace WhackerLinkConsoleV2
             {
                 GenerateChannelWidgets();
             }
+
+            // Prompt for dispatcher RID if not configured
+            if (!_settingsManager.UseDispatcherRidOverride || string.IsNullOrWhiteSpace(_settingsManager.DispatcherRid))
+            {
+                var result = MessageBox.Show(
+                    "Would you like to set a dispatcher RID that overrides the codeplug RID?\n\n" +
+                    "This allows multiple dispatchers to use unique radio IDs on the same system.\n\n" +
+                    "You can always change this later in Edit > Dispatcher RID Settings.",
+                    "Configure Dispatcher RID",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    DispatcherRidSettings_Click(null, null);
+                }
+            }
         }
 
         private void MainWindow_SourceInitialized(object sender, EventArgs e)
@@ -1514,6 +1537,16 @@ namespace WhackerLinkConsoleV2
             });
         }
 
+        private string GetEffectiveRid(Codeplug.System system)
+        {
+            // Use dispatcher RID override if enabled, otherwise use codeplug RID
+            if (_settingsManager.UseDispatcherRidOverride && !string.IsNullOrWhiteSpace(_settingsManager.DispatcherRid))
+            {
+                return _settingsManager.DispatcherRid;
+            }
+            return system.Rid;
+        }
+
         private async void SetGlobalPtt(bool state)
         {
             // Prevent duplicate state changes
@@ -1547,9 +1580,11 @@ namespace WhackerLinkConsoleV2
                             btnGlobalPtt.Background = channel.redGradient;
                         });
 
+                        string effectiveRid = GetEffectiveRid(system);
+
                         GRP_VCH_REQ request = new GRP_VCH_REQ
                         {
-                            SrcId = system.Rid,
+                            SrcId = effectiveRid,
                             DstId = cpgChannel.Tgid,
                             Site = system.Site
                         };
@@ -1565,9 +1600,11 @@ namespace WhackerLinkConsoleV2
                             btnGlobalPtt.Background = channel.grayGradient;
                         });
 
+                        string effectiveRid = GetEffectiveRid(system);
+
                         GRP_VCH_RLS release = new GRP_VCH_RLS
                         {
-                            SrcId = system.Rid,
+                            SrcId = effectiveRid,
                             DstId = cpgChannel.Tgid,
                             Site = system.Site
                         };
@@ -1583,6 +1620,8 @@ namespace WhackerLinkConsoleV2
 
                     channel.txStreamId = handler.NewStreamId();
 
+                    string effectiveRid = GetEffectiveRid(system);
+
                     if (globalPttState)
                     {
                         Dispatcher.Invoke(() =>
@@ -1591,7 +1630,7 @@ namespace WhackerLinkConsoleV2
                             channel.PttState = true;
                         });
 
-                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
+                        handler.SendP25TDU(UInt32.Parse(effectiveRid), UInt32.Parse(cpgChannel.Tgid), true);
                     }
                     else
                     {
@@ -1601,7 +1640,7 @@ namespace WhackerLinkConsoleV2
                             channel.PttState = false;
                         });
 
-                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
+                        handler.SendP25TDU(UInt32.Parse(effectiveRid), UInt32.Parse(cpgChannel.Tgid), false);
                     }
                 }
             }

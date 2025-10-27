@@ -48,6 +48,10 @@ namespace WhackerLinkConsoleV2
         public int PttHotkeyModifiers { get; set; } = 0; // KeyModifier flags
         public int PttHotkeyKey { get; set; } = 0; // Virtual key code
 
+        // Dispatcher RID Override Settings
+        public bool UseDispatcherRidOverride { get; set; } = false;
+        public string DispatcherRid { get; set; } = "";
+
         public void LoadSettings()
         {
             if (!File.Exists(SettingsFilePath)) return;
@@ -71,6 +75,8 @@ namespace WhackerLinkConsoleV2
                     EnableGlobalPttHotkey = loadedSettings.EnableGlobalPttHotkey;
                     PttHotkeyModifiers = loadedSettings.PttHotkeyModifiers;
                     PttHotkeyKey = loadedSettings.PttHotkeyKey;
+                    UseDispatcherRidOverride = loadedSettings.UseDispatcherRidOverride;
+                    DispatcherRid = loadedSettings.DispatcherRid ?? "";
                 }
             }
             catch (Exception ex)

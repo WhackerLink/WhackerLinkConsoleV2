@@ -28,6 +28,7 @@
                 <MenuItem Header="Open Codeplug" Click="OpenCodeplug_Click"/>
             </MenuItem>
             <MenuItem Header="Edit">
+                <MenuItem Header="Dispatcher RID Settings" Click="DispatcherRidSettings_Click" />
                 <MenuItem Header="Audio Settings" Click="AudioSettings_Click" />
                 <MenuItem Header="PTT Hotkey Settings" Click="PttHotkeySettings_Click" />
                 <MenuItem Header="Enable Edit Mode" Click="ToggleEditMode_Click"/>
