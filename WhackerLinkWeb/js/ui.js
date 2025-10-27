@@ -23,6 +23,7 @@ class UIController {
         // Settings panel
         this.settingsPanel = document.getElementById('settings-panel');
         this.serverAddressInput = document.getElementById('server-address');
+        this.authKeyInput = document.getElementById('auth-key');
         this.dispatcherRidInput = document.getElementById('dispatcher-rid');
         this.dispatcherNameInput = document.getElementById('dispatcher-name');
         this.connectBtn = document.getElementById('connect-btn');
@@ -77,16 +78,19 @@ class UIController {
 
     loadSavedSettings() {
         const serverAddress = loadSettings(Config.STORAGE_KEY_SERVER, Config.DEFAULT_SERVER);
+        const authKey = loadSettings(Config.STORAGE_KEY_AUTH_KEY, '');
         const rid = loadSettings(Config.STORAGE_KEY_RID, '');
         const name = loadSettings(Config.STORAGE_KEY_NAME, '');
 
         this.serverAddressInput.value = serverAddress;
+        this.authKeyInput.value = authKey;
         this.dispatcherRidInput.value = rid;
         this.dispatcherNameInput.value = name;
     }
 
     handleConnect() {
         const serverAddress = this.serverAddressInput.value.trim();
+        const authKey = this.authKeyInput.value.trim();
         const rid = this.dispatcherRidInput.value.trim();
         const name = this.dispatcherNameInput.value.trim();
 
@@ -103,11 +107,12 @@ class UIController {
 
         // Save settings
         saveSettings(Config.STORAGE_KEY_SERVER, serverAddress);
+        saveSettings(Config.STORAGE_KEY_AUTH_KEY, authKey);
         saveSettings(Config.STORAGE_KEY_RID, rid);
         saveSettings(Config.STORAGE_KEY_NAME, name);
 
         // Connect
-        window.WLWebSocket.connect(serverAddress, rid);
+        window.WLWebSocket.connect(serverAddress, authKey, rid);
 
         this.showToast('Connecting...', 'warning');
     }

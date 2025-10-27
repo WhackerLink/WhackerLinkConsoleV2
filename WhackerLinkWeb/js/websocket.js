@@ -5,6 +5,7 @@ class WhackerLinkWebSocket {
         this.ws = null;
         this.isConnected = false;
         this.serverAddress = '';
+        this.authKey = '';
         this.rid = '';
         this.selectedChannel = null;
         this.reconnectAttempts = 0;
@@ -17,13 +18,14 @@ class WhackerLinkWebSocket {
         this.onError = null;
     }
 
-    connect(serverAddress, rid) {
+    connect(serverAddress, authKey, rid) {
         if (this.isConnected) {
             console.warn('Already connected');
             return;
         }
 
         this.serverAddress = serverAddress;
+        this.authKey = authKey || '';
         this.rid = rid;
 
         try {
@@ -55,6 +57,11 @@ class WhackerLinkWebSocket {
         this.isConnected = true;
         this.reconnectAttempts = 0;
 
+        // Send authentication if authKey is provided
+        if (this.authKey) {
+            this.sendAuthentication();
+        }
+
         if (this.onConnected) {
             this.onConnected();
         }
@@ -78,7 +85,7 @@ class WhackerLinkWebSocket {
             this.reconnectAttempts++;
             console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
             setTimeout(() => {
-                this.connect(this.serverAddress, this.rid);
+                this.connect(this.serverAddress, this.authKey, this.rid);
             }, this.reconnectDelay);
         }
     }
@@ -137,6 +144,29 @@ class WhackerLinkWebSocket {
     processJsonMessage(data) {
         // Handle JSON messages from server
         console.log('JSON message:', data);
+    }
+
+    // Send authentication
+    sendAuthentication() {
+        if (!this.isConnected) {
+            console.warn('Not connected');
+            return false;
+        }
+
+        try {
+            const message = {
+                type: 'AUTH',
+                authKey: this.authKey,
+                srcId: this.rid
+            };
+
+            this.send(JSON.stringify(message));
+            console.log('Sent authentication');
+            return true;
+        } catch (error) {
+            console.error('Failed to send authentication:', error);
+            return false;
+        }
     }
 
     // Send affiliation request

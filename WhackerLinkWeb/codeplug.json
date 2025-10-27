@@ -1,4 +1,12 @@
 {
+  "systems": [
+    {
+      "name": "System 1",
+      "address": "localhost",
+      "port": 3131,
+      "authKey": "cf0dc3655ab46ba4dfc82a98e1638802ad24d494f865f1e00867d78b67c6d765"
+    }
+  ],
   "zones": [
     {
       "name": "LS SHERIFF",
