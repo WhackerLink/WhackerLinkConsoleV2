@@ -207,9 +207,19 @@ class UIController {
         channels.forEach(channel => {
             const channelItem = document.createElement('div');
             channelItem.className = 'channel-item';
+
+            // Build info string
+            let infoText = `TG: ${channel.tgid}`;
+            if (channel.site) {
+                infoText += ` | Site: ${channel.site}`;
+            }
+            if (channel.zone) {
+                infoText += ` | ${channel.zone}`;
+            }
+
             channelItem.innerHTML = `
                 <div class="channel-name">${channel.name}</div>
-                <div class="channel-info">TG: ${channel.tgid} | Site: ${channel.site || '1'}</div>
+                <div class="channel-info">${infoText}</div>
             `;
             channelItem.addEventListener('click', () => this.selectChannel(channel));
             this.channelsList.appendChild(channelItem);

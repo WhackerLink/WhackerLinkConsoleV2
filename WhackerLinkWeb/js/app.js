@@ -59,19 +59,52 @@ class WhackerLinkApp {
         console.log('Audio permissions will be requested on first PTT');
     }
 
-    loadSampleChannels() {
-        // Sample channels for testing
-        // In a real app, these would come from the server or a codeplug
-        const sampleChannels = [
-            { name: 'Police Dispatch', tgid: '1001', site: '1' },
-            { name: 'Fire Department', tgid: '2001', site: '1' },
-            { name: 'EMS', tgid: '3001', site: '1' },
-            { name: 'Public Works', tgid: '4001', site: '1' },
-            { name: 'Emergency Ops', tgid: '5001', site: '1' },
-            { name: 'Mutual Aid', tgid: '9001', site: '1' },
+    async loadSampleChannels() {
+        try {
+            // Try to load codeplug.json
+            const response = await fetch('codeplug.json');
+
+            if (response.ok) {
+                const codeplug = await response.json();
+
+                // Extract all channels from all zones
+                const allChannels = [];
+                codeplug.zones.forEach(zone => {
+                    zone.channels.forEach(channel => {
+                        allChannels.push({
+                            name: channel.name,
+                            tgid: channel.tgid,
+                            site: channel.site || '1',
+                            system: channel.system,
+                            zone: zone.name
+                        });
+                    });
+                });
+
+                console.log(`Loaded ${allChannels.length} channels from codeplug`);
+                window.UI.populateChannels(allChannels);
+            } else {
+                // Fallback to hardcoded channels
+                console.warn('Could not load codeplug.json, using fallback channels');
+                this.loadFallbackChannels();
+            }
+        } catch (error) {
+            console.error('Error loading codeplug:', error);
+            this.loadFallbackChannels();
+        }
+    }
+
+    loadFallbackChannels() {
+        // Fallback channels if codeplug.json is not available
+        const fallbackChannels = [
+            { name: 'ORG-NORTH', tgid: '30001', site: '1', system: 'System 1' },
+            { name: 'TAC 1', tgid: '30002', site: '1', system: 'System 1' },
+            { name: 'TAC 2', tgid: '30003', site: '1', system: 'System 1' },
+            { name: 'SWAT', tgid: '30004', site: '1', system: 'System 1' },
+            { name: 'TalkAround', tgid: '30005', site: '1', system: 'System 1' },
         ];
 
-        window.UI.populateChannels(sampleChannels);
+        window.UI.populateChannels(fallbackChannels);
     }
 
     registerServiceWorker() {

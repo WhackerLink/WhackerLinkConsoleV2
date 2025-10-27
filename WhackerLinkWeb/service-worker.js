@@ -10,7 +10,8 @@ const urlsToCache = [
     '/js/audio.js',
     '/js/ui.js',
     '/js/app.js',
-    '/manifest.json'
+    '/manifest.json',
+    '/codeplug.json'
 ];
 
 // Install event

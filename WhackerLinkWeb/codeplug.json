@@ -1,0 +1,39 @@
+{
+  "zones": [
+    {
+      "name": "LS SHERIFF",
+      "channels": [
+        {
+          "name": "ORG-NORTH",
+          "system": "System 1",
+          "tgid": "30001",
+          "site": "1"
+        },
+        {
+          "name": "TAC 1",
+          "system": "System 1",
+          "tgid": "30002",
+          "site": "1"
+        },
+        {
+          "name": "TAC 2",
+          "system": "System 1",
+          "tgid": "30003",
+          "site": "1"
+        },
+        {
+          "name": "SWAT",
+          "system": "System 1",
+          "tgid": "30004",
+          "site": "1"
+        },
+        {
+          "name": "TalkAround",
+          "system": "System 1",
+          "tgid": "30005",
+          "site": "1"
+        }
+      ]
+    }
+  ]
+}
