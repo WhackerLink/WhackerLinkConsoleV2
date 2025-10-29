@@ -252,7 +252,7 @@ namespace WhackerLinkConsoleV2
                                                 {
                                                     GRP_AFF_REQ release = new GRP_AFF_REQ
                                                     {
-                                                        SrcId = system.Rid,
+                                                        SrcId = GetEffectiveRid(system),
                                                         DstId = cpgChannel.Tgid,
                                                         Site = system.Site
                                                     };
@@ -285,7 +285,7 @@ namespace WhackerLinkConsoleV2
                             Console.WriteLine("Peer connected");
                             U_REG_REQ release = new U_REG_REQ
                             {
-                                SrcId = system.Rid,
+                                SrcId = GetEffectiveRid(system),
                                 Site = system.Site
                             };
 
@@ -495,7 +495,7 @@ namespace WhackerLinkConsoleV2
                                     {
                                         Frequency = channel.VoiceChannel,
                                         DstId = cpgChannel.Tgid,
-                                        SrcId = system.Rid,
+                                        SrcId = GetEffectiveRid(system),
                                         Site = system.Site
                                     },
                                     Site = system.Site
@@ -503,7 +503,7 @@ namespace WhackerLinkConsoleV2
                             };
 
 #if DEBUG
-                            Console.WriteLine($"WLINK AUDIO_DATA SrcId: {system.Rid}; DstId: {cpgChannel.Tgid}; Freq: {channel.VoiceChannel}");
+                            Console.WriteLine($"WLINK AUDIO_DATA SrcId: {GetEffectiveRid(system)}; DstId: {cpgChannel.Tgid}; Freq: {channel.VoiceChannel}");
 #endif
 
                             handler.SendMessage(voicePaket);
@@ -562,7 +562,7 @@ namespace WhackerLinkConsoleV2
                         {
                             GRP_AFF_REQ release = new GRP_AFF_REQ
                             {
-                                SrcId = system.Rid,
+                                SrcId = GetEffectiveRid(system),
                                 DstId = cpgChannel.Tgid,
                                 Site = system.Site
                             };
@@ -583,7 +583,7 @@ namespace WhackerLinkConsoleV2
                             fne.peer.SendMasterKeyRequest(cpgChannel.GetAlgoId(), cpgChannel.GetKeyId());
 
                         if (!exists)
-                            fneAffs.Add(new Tuple<uint, uint>(GetUniqueRid(system.Rid), newTgid));
+                            fneAffs.Add(new Tuple<uint, uint>(GetUniqueRid(GetEffectiveRid(system)), newTgid));
 
                         //Console.WriteLine("FNE Affiliations:");
                         //foreach (var aff in fneAffs)
@@ -621,7 +621,32 @@ namespace WhackerLinkConsoleV2
         private void DispatcherRidSettings_Click(object sender, RoutedEventArgs e)
         {
             DispatcherRidSettingsWindow ridSettingsWindow = new DispatcherRidSettingsWindow(_settingsManager);
-            ridSettingsWindow.ShowDialog();
+            bool? result = ridSettingsWindow.ShowDialog();
+
+            // If settings were saved, re-register all connected systems with new RID
+            if (result == true)
+            {
+                foreach (var system in Codeplug.Systems)
+                {
+                    if (!system.IsDvm)
+                    {
+                        IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                        if (handler != null && handler.IsConnected)
+                        {
+                            // Send new registration with updated RID
+                            U_REG_REQ registration = new U_REG_REQ
+                            {
+                                SrcId = GetEffectiveRid(system),
+                                Site = system.Site
+                            };
+
+                            handler.SendMessage(registration.GetData());
+                            Console.WriteLine($"Re-registered system '{system.Name}' with RID: {GetEffectiveRid(system)}");
+                        }
+                    }
+                }
+            }
         }
 
         private void P25Page_Click(object sender, RoutedEventArgs e)
@@ -724,7 +749,7 @@ namespace WhackerLinkConsoleV2
                                         {
                                             Frequency = channel.VoiceChannel,
                                             DstId = cpgChannel.Tgid,
-                                            SrcId = system.Rid,
+                                            SrcId = GetEffectiveRid(system),
                                             Site = system.Site
                                         },
                                         Site = system.Site,
@@ -753,7 +778,7 @@ namespace WhackerLinkConsoleV2
 
                             GRP_VCH_RLS release = new GRP_VCH_RLS
                             {
-                                SrcId = system.Rid,
+                                SrcId = GetEffectiveRid(system),
                                 DstId = cpgChannel.Tgid,
                                 Channel = channel.VoiceChannel,
                                 Site = system.Site
@@ -766,7 +791,7 @@ namespace WhackerLinkConsoleV2
 
                             await Task.Delay(4000);
 
-                            handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
+                            handler.SendP25TDU(UInt32.Parse(GetEffectiveRid(system)), UInt32.Parse(cpgChannel.Tgid), false);
                         }
 
                         Dispatcher.Invoke(() =>
@@ -855,7 +880,7 @@ namespace WhackerLinkConsoleV2
                                             {
                                                 Frequency = channel.VoiceChannel,
                                                 DstId = cpgChannel.Tgid,
-                                                SrcId = system.Rid,
+                                                SrcId = GetEffectiveRid(system),
                                                 Site = system.Site
                                             },
                                             Site = system.Site,
@@ -897,7 +922,7 @@ namespace WhackerLinkConsoleV2
 
                                     GRP_VCH_RLS release = new GRP_VCH_RLS
                                     {
-                                        SrcId = system.Rid,
+                                        SrcId = GetEffectiveRid(system),
                                         DstId = cpgChannel.Tgid,
                                         Channel = channel.VoiceChannel,
                                         Site = system.Site
@@ -918,7 +943,7 @@ namespace WhackerLinkConsoleV2
 
                                     await Task.Delay(3000);
 
-                                    handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
+                                    handler.SendP25TDU(UInt32.Parse(GetEffectiveRid(system)), UInt32.Parse(cpgChannel.Tgid), false);
 
                                     Dispatcher.Invoke(() =>
                                     {
@@ -997,7 +1022,7 @@ namespace WhackerLinkConsoleV2
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
 
-                if (request.DstId == system.Rid)
+                if (request.DstId == GetEffectiveRid(system))
                 {
 
                     ACK_RSP ack = new ACK_RSP
@@ -1028,7 +1053,7 @@ namespace WhackerLinkConsoleV2
                 if (system.IsDvm)
                     continue;
 
-                if (audioPacket.VoiceChannel.SrcId != system.Rid && audioPacket.VoiceChannel.Frequency == channel.VoiceChannel && audioPacket.VoiceChannel.DstId == cpgChannel.Tgid)
+                if (audioPacket.VoiceChannel.SrcId != GetEffectiveRid(system) && audioPacket.VoiceChannel.Frequency == channel.VoiceChannel && audioPacket.VoiceChannel.DstId == cpgChannel.Tgid)
                     shouldReceive = true;
             }
 
@@ -1051,7 +1076,7 @@ namespace WhackerLinkConsoleV2
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
 
-                bool ridExists = affUpdate.Affiliations.Any(aff => aff.SrcId == system.Rid);
+                bool ridExists = affUpdate.Affiliations.Any(aff => aff.SrcId == GetEffectiveRid(system));
                 bool tgidExists = affUpdate.Affiliations.Any(aff => aff.DstId == cpgChannel.Tgid);
 
                 if (ridExists && tgidExists)
@@ -1065,7 +1090,7 @@ namespace WhackerLinkConsoleV2
                     {
                         GRP_AFF_REQ affReq = new GRP_AFF_REQ
                         {
-                            SrcId = system.Rid,
+                            SrcId = GetEffectiveRid(system),
                             DstId = cpgChannel.Tgid,
                             Site = system.Site
                         };
@@ -1091,7 +1116,7 @@ namespace WhackerLinkConsoleV2
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
 
-                if (response.DstId == cpgChannel.Tgid && response.SrcId != system.Rid)
+                if (response.DstId == cpgChannel.Tgid && response.SrcId != GetEffectiveRid(system))
                 {
                     Dispatcher.Invoke(() =>
                     {
@@ -1127,11 +1152,11 @@ namespace WhackerLinkConsoleV2
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
 
-                if (channel.PttState && response.Status == (int)ResponseType.GRANT && response.Channel != null && response.SrcId == system.Rid && response.DstId == cpgChannel.Tgid)
+                if (channel.PttState && response.Status == (int)ResponseType.GRANT && response.Channel != null && response.SrcId == GetEffectiveRid(system) && response.DstId == cpgChannel.Tgid)
                 {
                     channel.VoiceChannel = response.Channel;
                 }
-                else if (response.Status == (int)ResponseType.GRANT && response.SrcId != system.Rid && response.DstId == cpgChannel.Tgid)
+                else if (response.Status == (int)ResponseType.GRANT && response.SrcId != GetEffectiveRid(system) && response.DstId == cpgChannel.Tgid)
                 {
                     channel.VoiceChannel = response.Channel;
 
@@ -1154,7 +1179,7 @@ namespace WhackerLinkConsoleV2
                         channel.IsReceiving = true;
                     });
                 }
-                else if ((channel.HoldState || channel.PageState) && response.Status == (int)ResponseType.GRANT && response.Channel != null && response.SrcId == system.Rid && response.DstId == cpgChannel.Tgid)
+                else if ((channel.HoldState || channel.PageState) && response.Status == (int)ResponseType.GRANT && response.Channel != null && response.SrcId == GetEffectiveRid(system) && response.DstId == cpgChannel.Tgid)
                 {
                     channel.VoiceChannel = response.Channel;
                 }
@@ -1205,7 +1230,7 @@ namespace WhackerLinkConsoleV2
                 {
                     GRP_VCH_REQ request = new GRP_VCH_REQ
                     {
-                        SrcId = system.Rid,
+                        SrcId = GetEffectiveRid(system),
                         DstId = cpgChannel.Tgid,
                         Site = system.Site
                     };
@@ -1216,7 +1241,7 @@ namespace WhackerLinkConsoleV2
                 {
                     GRP_VCH_RLS release = new GRP_VCH_RLS
                     {
-                        SrcId = system.Rid,
+                        SrcId = GetEffectiveRid(system),
                         DstId = cpgChannel.Tgid,
                         Channel = e.VoiceChannel,
                         Site = system.Site
@@ -1231,11 +1256,11 @@ namespace WhackerLinkConsoleV2
                 PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
                 if (e.PageState)
                 {
-                    handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
+                    handler.SendP25TDU(UInt32.Parse(GetEffectiveRid(system)), UInt32.Parse(cpgChannel.Tgid), true);
                 }
                 else
                 {
-                    handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
+                    handler.SendP25TDU(UInt32.Parse(GetEffectiveRid(system)), UInt32.Parse(cpgChannel.Tgid), false);
                 }
             }
         }
@@ -1259,7 +1284,7 @@ namespace WhackerLinkConsoleV2
                 {
                     GRP_VCH_REQ request = new GRP_VCH_REQ
                     {
-                        SrcId = system.Rid,
+                        SrcId = GetEffectiveRid(system),
                         DstId = cpgChannel.Tgid,
                         Site = system.Site
                     };
@@ -1270,7 +1295,7 @@ namespace WhackerLinkConsoleV2
                 {
                     GRP_VCH_RLS release = new GRP_VCH_RLS
                     {
-                        SrcId = system.Rid,
+                        SrcId = GetEffectiveRid(system),
                         DstId = cpgChannel.Tgid,
                         Channel = e.VoiceChannel,
                         Site = system.Site
@@ -1288,7 +1313,7 @@ namespace WhackerLinkConsoleV2
 
                 FneUtils.Memset(e.mi, 0x00, P25Defines.P25_MI_LENGTH);
 
-                uint srcId = UInt32.Parse(system.Rid);
+                uint srcId = UInt32.Parse(GetEffectiveRid(system));
                 uint dstId = UInt32.Parse(cpgChannel.Tgid);
 
                 if (e.PttState)
@@ -1671,7 +1696,7 @@ namespace WhackerLinkConsoleV2
 
                         GRP_VCH_REQ req = new GRP_VCH_REQ
                         {
-                            SrcId = system.Rid,
+                            SrcId = GetEffectiveRid(system),
                             DstId = cpgChannel.Tgid,
                             Site = system.Site
                         };
@@ -1689,7 +1714,7 @@ namespace WhackerLinkConsoleV2
 
                     if (channel.HoldState && !channel.IsReceiving && !channel.PttState && !channel.PageState)
                     {
-                        handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
+                        handler.SendP25TDU(UInt32.Parse(GetEffectiveRid(system)), UInt32.Parse(cpgChannel.Tgid), true);
                         await Task.Delay(1000);
 
                         SendAlertTone("hold.wav", true);
@@ -1940,7 +1965,7 @@ namespace WhackerLinkConsoleV2
                     break;
             }
 
-            uint srcId = UInt32.Parse(system.Rid);
+            uint srcId = UInt32.Parse(GetEffectiveRid(system));
             uint dstId = UInt32.Parse(cpgChannel.Tgid);
 
             FnePeer peer = handler.peer;
