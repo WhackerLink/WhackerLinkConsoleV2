@@ -376,6 +376,7 @@ namespace WhackerLinkConsoleV2
                         channelBox.PTTButtonClicked += ChannelBox_PTTButtonClicked;
                         channelBox.PageButtonClicked += ChannelBox_PageButtonClicked;
                         channelBox.HoldChannelButtonClicked += ChannelBox_HoldChannelButtonClicked;
+                        channelBox.PrimeButtonClicked += ChannelBox_PrimeButtonClicked;
 
                         channelBox.MouseLeftButtonDown += ChannelBox_MouseLeftButtonDown;
                         channelBox.MouseMove += ChannelBox_MouseMove;
@@ -437,6 +438,7 @@ namespace WhackerLinkConsoleV2
             playbackChannelBox.PTTButtonClicked += ChannelBox_PTTButtonClicked;
             playbackChannelBox.PageButtonClicked += ChannelBox_PageButtonClicked;
             playbackChannelBox.HoldChannelButtonClicked += ChannelBox_HoldChannelButtonClicked;
+            playbackChannelBox.PrimeButtonClicked += ChannelBox_PrimeButtonClicked;
 
             playbackChannelBox.MouseLeftButtonDown += ChannelBox_MouseLeftButtonDown;
             playbackChannelBox.MouseMove += ChannelBox_MouseMove;
@@ -1050,19 +1052,44 @@ namespace WhackerLinkConsoleV2
             bool shouldReceive = false;
             string talkgroupId = audioPacket.VoiceChannel.DstId;
 
-            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+            // Check if there's a primed channel - if so, prioritize it for audio reception
+            ChannelBox primedChannel = _selectedChannelsManager.GetSelectedChannels()
+                .FirstOrDefault(ch => ch.PrimeState && ch.IsSelected &&
+                                     ch.SystemName != PLAYBACKSYS &&
+                                     ch.ChannelName != PLAYBACKCHNAME &&
+                                     ch.DstId != PLAYBACKTG);
+
+            if (primedChannel != null)
             {
-                if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
-                    continue;
+                // Only receive audio if it matches the primed channel
+                Codeplug.System primedSystem = Codeplug.GetSystemForChannel(primedChannel.ChannelName);
+                Codeplug.Channel primedCpgChannel = Codeplug.GetChannelByName(primedChannel.ChannelName);
 
-                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
-                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
-
-                if (system.IsDvm)
-                    continue;
-
-                if (audioPacket.VoiceChannel.SrcId != GetEffectiveRid(system) && audioPacket.VoiceChannel.Frequency == channel.VoiceChannel && audioPacket.VoiceChannel.DstId == cpgChannel.Tgid)
+                if (!primedSystem.IsDvm &&
+                    audioPacket.VoiceChannel.SrcId != GetEffectiveRid(primedSystem) &&
+                    audioPacket.VoiceChannel.Frequency == primedChannel.VoiceChannel &&
+                    audioPacket.VoiceChannel.DstId == primedCpgChannel.Tgid)
+                {
                     shouldReceive = true;
+                }
+            }
+            else
+            {
+                // No primed channel - check all selected channels
+                foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+                {
+                    if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                        continue;
+
+                    Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                    Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                    if (system.IsDvm)
+                        continue;
+
+                    if (audioPacket.VoiceChannel.SrcId != GetEffectiveRid(system) && audioPacket.VoiceChannel.Frequency == channel.VoiceChannel && audioPacket.VoiceChannel.DstId == cpgChannel.Tgid)
+                        shouldReceive = true;
+                }
             }
 
             if (shouldReceive)
@@ -1219,6 +1246,21 @@ namespace WhackerLinkConsoleV2
                 return;
 
             IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+        }
+
+        private void ChannelBox_PrimeButtonClicked(object sender, ChannelBox e)
+        {
+            // When a channel is primed, unprime all other channels (only one can be primed)
+            if (e.PrimeState)
+            {
+                foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+                {
+                    if (channel != e && channel.PrimeState)
+                    {
+                        channel.PrimeState = false;
+                    }
+                }
+            }
         }
 
         private void ChannelBox_PageButtonClicked(object sender, ChannelBox e)
@@ -1591,7 +1633,19 @@ namespace WhackerLinkConsoleV2
 
             globalPttState = state;
 
-            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+            // Check if there's a primed channel - if so, only activate PTT on that channel
+            ChannelBox primedChannel = _selectedChannelsManager.GetSelectedChannels()
+                .FirstOrDefault(ch => ch.PrimeState && ch.IsSelected &&
+                                     ch.SystemName != PLAYBACKSYS &&
+                                     ch.ChannelName != PLAYBACKCHNAME &&
+                                     ch.DstId != PLAYBACKTG);
+
+            // If there's a primed channel, only process that one
+            var channelsToProcess = primedChannel != null
+                ? new List<ChannelBox> { primedChannel }
+                : _selectedChannelsManager.GetSelectedChannels();
+
+            foreach (ChannelBox channel in channelsToProcess)
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
                     continue;

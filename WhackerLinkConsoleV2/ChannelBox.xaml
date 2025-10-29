@@ -80,6 +80,20 @@
 
 
             <!-- Bottom Buttons -->
+            <Button x:Name="PrimeButton" Click="PrimeButton_Click"
+                    Width="35" Height="35"
+                    Grid.Column="0" Grid.Row="2"
+                    Margin="2,2,0,0"
+                    BorderThickness="1"
+                    ToolTip="Prime this channel for priority RX and global PTT">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="2"/>
+                    </Style>
+                </Button.Resources>
+                <TextBlock Text="PRI" FontWeight="Bold" FontSize="10" Foreground="White"/>
+            </Button>
+
             <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Margin="81,0,-2,0" Grid.RowSpan="2" Grid.ColumnSpan="2">
                 <Button Width="40" Height="40" x:Name="PageSelectButton" Click="PageSelectButton_Click" BorderThickness="0,0,0,0">
                     <Button.Resources>

@@ -36,6 +36,7 @@ namespace WhackerLinkConsoleV2.Controls
         private bool _pttState;
         private bool _pageState;
         private bool _holdState;
+        private bool _primeState;
         private bool _emergency;
         private string _lastSrcId = "0";
         private double _volume = 1.0;
@@ -43,12 +44,14 @@ namespace WhackerLinkConsoleV2.Controls
         internal LinearGradientBrush grayGradient;
         internal LinearGradientBrush redGradient;
         internal LinearGradientBrush orangeGradient;
+        internal LinearGradientBrush greenGradient;
 
         public FlashingBackgroundManager _flashingBackgroundManager;
 
         public event EventHandler<ChannelBox> PTTButtonClicked;
         public event EventHandler<ChannelBox> PageButtonClicked;
         public event EventHandler<ChannelBox> HoldChannelButtonClicked;
+        public event EventHandler<ChannelBox> PrimeButtonClicked;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -126,6 +129,16 @@ namespace WhackerLinkConsoleV2.Controls
             {
                 _holdState = value;
                 UpdateHoldColor();
+            }
+        }
+
+        public bool PrimeState
+        {
+            get => _primeState;
+            set
+            {
+                _primeState = value;
+                UpdatePrimeColor();
             }
         }
 
@@ -218,9 +231,19 @@ namespace WhackerLinkConsoleV2.Controls
             orangeGradient.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#FFFFAF00"), 0.485));
             orangeGradient.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#FFEEA400"), 0.517));
 
+            greenGradient = new LinearGradientBrush
+            {
+                StartPoint = new Point(0.5, 0),
+                EndPoint = new Point(0.5, 1)
+            };
+
+            greenGradient.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#FF00FF00"), 0.485));
+            greenGradient.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#FF00D500"), 0.517));
+
             PttButton.Background = grayGradient;
             PageSelectButton.Background = grayGradient;
             ChannelMarkerBtn.Background = grayGradient;
+            PrimeButton.Background = grayGradient;
 
             if (SystemName == MainWindow.PLAYBACKSYS || ChannelName == MainWindow.PLAYBACKCHNAME || DstId == MainWindow.PLAYBACKTG)
             {
@@ -277,6 +300,16 @@ namespace WhackerLinkConsoleV2.Controls
                 ChannelMarkerBtn.Background = grayGradient;
         }
 
+        private void UpdatePrimeColor()
+        {
+            if (IsEditMode) return;
+
+            if (PrimeState)
+                PrimeButton.Background = greenGradient;
+            else
+                PrimeButton.Background = grayGradient;
+        }
+
         private void UpdateBackground()
         {
             if (SystemName == MainWindow.PLAYBACKSYS || ChannelName == MainWindow.PLAYBACKCHNAME || DstId == MainWindow.PLAYBACKTG)
@@ -324,6 +357,14 @@ namespace WhackerLinkConsoleV2.Controls
 
             HoldState = !HoldState;
             HoldChannelButtonClicked.Invoke(sender, this);
+        }
+
+        private void PrimeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!IsSelected) return;
+
+            PrimeState = !PrimeState;
+            PrimeButtonClicked?.Invoke(sender, this);
         }
 
         private void PttButton_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
