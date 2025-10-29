@@ -790,7 +790,7 @@ namespace WhackerLinkConsoleV2
                             {
                                 SrcId = GetEffectiveRid(system),
                                 DstId = cpgChannel.Tgid,
-                                Channel = channel.VoiceChannel,
+                                Channel = channel.VoiceChannel ?? string.Empty,
                                 Site = system.Site
                             };
 
@@ -934,7 +934,7 @@ namespace WhackerLinkConsoleV2
                                     {
                                         SrcId = GetEffectiveRid(system),
                                         DstId = cpgChannel.Tgid,
-                                        Channel = channel.VoiceChannel,
+                                        Channel = channel.VoiceChannel ?? string.Empty,
                                         Site = system.Site
                                     };
 
@@ -1111,16 +1111,17 @@ namespace WhackerLinkConsoleV2
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
 
-                bool ridExists = affUpdate.Affiliations.Any(aff => aff.SrcId == GetEffectiveRid(system));
-                bool tgidExists = affUpdate.Affiliations.Any(aff => aff.DstId == cpgChannel.Tgid);
+                // Check if this specific RID is affiliated to this specific talkgroup
+                bool isAffiliated = affUpdate.Affiliations.Any(aff =>
+                    aff.SrcId == GetEffectiveRid(system) && aff.DstId == cpgChannel.Tgid);
 
-                if (ridExists && tgidExists)
+                if (isAffiliated)
                 {
-                    //Console.WriteLine("rid aff'ed");
+                    //Console.WriteLine("rid aff'ed to talkgroup");
                 }
                 else
                 {
-                    //Console.WriteLine("rid not aff'ed");
+                    //Console.WriteLine("rid not aff'ed to talkgroup - sending affiliation request");
                     Task.Run(() =>
                     {
                         GRP_AFF_REQ affReq = new GRP_AFF_REQ
@@ -1293,7 +1294,7 @@ namespace WhackerLinkConsoleV2
                     {
                         SrcId = GetEffectiveRid(system),
                         DstId = cpgChannel.Tgid,
-                        Channel = e.VoiceChannel,
+                        Channel = e.VoiceChannel ?? string.Empty,
                         Site = system.Site
                     };
 
@@ -1347,7 +1348,7 @@ namespace WhackerLinkConsoleV2
                     {
                         SrcId = GetEffectiveRid(system),
                         DstId = cpgChannel.Tgid,
-                        Channel = e.VoiceChannel,
+                        Channel = e.VoiceChannel ?? string.Empty,
                         Site = system.Site
                     };
 
@@ -1693,6 +1694,7 @@ namespace WhackerLinkConsoleV2
                         {
                             SrcId = effectiveRid,
                             DstId = cpgChannel.Tgid,
+                            Channel = channel.VoiceChannel ?? string.Empty,
                             Site = system.Site
                         };
 
