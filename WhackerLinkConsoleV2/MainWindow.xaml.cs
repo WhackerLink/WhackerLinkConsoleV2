@@ -463,6 +463,10 @@ namespace WhackerLinkConsoleV2
         {
             bool isAnyTgOn = false;
 
+            // Copy the audio buffer to prevent corruption when processing multiple channels concurrently
+            byte[] bufferCopy = new byte[e.Buffer.Length];
+            Buffer.BlockCopy(e.Buffer, 0, bufferCopy, 0, e.Buffer.Length);
+
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
@@ -473,6 +477,10 @@ namespace WhackerLinkConsoleV2
 
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                // Create a copy of the buffer for this channel to avoid race conditions
+                byte[] channelBuffer = new byte[bufferCopy.Length];
+                Buffer.BlockCopy(bufferCopy, 0, channelBuffer, 0, bufferCopy.Length);
 
                 Task.Run(() =>
                 {
@@ -490,7 +498,7 @@ namespace WhackerLinkConsoleV2
                                 type = PacketType.AUDIO_DATA,
                                 data = new
                                 {
-                                    Data = e.Buffer,
+                                    Data = channelBuffer,
                                     VoiceChannel = new VoiceChannel
                                     {
                                         Frequency = channel.VoiceChannel,
@@ -519,7 +527,7 @@ namespace WhackerLinkConsoleV2
 
                             int samples = 320;
 
-                            channel.chunkedPcm = AudioConverter.SplitToChunks(e.Buffer);
+                            channel.chunkedPcm = AudioConverter.SplitToChunks(channelBuffer);
 
                             foreach (byte[] chunk in channel.chunkedPcm)
                             {
@@ -538,7 +546,7 @@ namespace WhackerLinkConsoleV2
             }
 
             if (isAnyTgOn && playbackChannelBox.IsSelected)
-                _audioManager.AddTalkgroupStream(PLAYBACKTG, e.Buffer);
+                _audioManager.AddTalkgroupStream(PLAYBACKTG, bufferCopy);
         }
 
         private void SelectedChannelsChanged()
@@ -1805,14 +1813,17 @@ namespace WhackerLinkConsoleV2
         /// </summary>
         private void P25EncodeAudioFrame(byte[] pcm, PeerSystem handler, ChannelBox channel, Codeplug.Channel cpgChannel, Codeplug.System system)
         {
-            bool encryptCall = true; // TODO: make this dynamic somewhere?
+            // Lock to prevent concurrent access to channel encoding state when transmitting on multiple channels
+            lock (channel.p25EncodeLock)
+            {
+                bool encryptCall = true; // TODO: make this dynamic somewhere?
 
-            if (channel.p25N > 17)
-                channel.p25N = 0;
-            if (channel.p25N == 0)
-                FneUtils.Memset(channel.netLDU1, 0, 9 * 25);
-            if (channel.p25N == 9)
-                FneUtils.Memset(channel.netLDU2, 0, 9 * 25);
+                if (channel.p25N > 17)
+                    channel.p25N = 0;
+                if (channel.p25N == 0)
+                    FneUtils.Memset(channel.netLDU1, 0, 9 * 25);
+                if (channel.p25N == 9)
+                    FneUtils.Memset(channel.netLDU2, 0, 9 * 25);
 
             // Log.Logger.Debug($"BYTE BUFFER {FneUtils.HexDump(pcm)}");
 
@@ -2012,8 +2023,9 @@ namespace WhackerLinkConsoleV2
                 peer.SendMaster(new Tuple<byte, byte>(Constants.NET_FUNC_PROTOCOL, Constants.NET_PROTOCOL_SUBFUNC_P25), payload, pktSeq, channel.txStreamId);
             }
 
-            channel.p25SeqNo++;
-            channel.p25N++;
+                channel.p25SeqNo++;
+                channel.p25N++;
+            }
         }
 
         /// <summary>

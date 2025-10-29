@@ -52,6 +52,9 @@ namespace WhackerLinkConsoleV2.Controls
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        // Lock object for thread-safe P25 encoding state access
+        public readonly object p25EncodeLock = new object();
+
         public byte[] netLDU1 = new byte[9 * 25];
         public byte[] netLDU2 = new byte[9 * 25];
 
