@@ -986,25 +986,36 @@ namespace WhackerLinkConsoleV2
                 {
                     string tonePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", toneFileName);
 
-                    if (File.Exists(tonePath))
+                    if (!File.Exists(tonePath))
                     {
-                        using (var audioFile = new AudioFileReader(tonePath))
-                        using (var outputDevice = new WaveOutEvent())
+                        Dispatcher.Invoke(() =>
                         {
-                            outputDevice.Init(audioFile);
-                            outputDevice.Play();
+                            MessageBox.Show($"PTT tone file not found: {tonePath}", "Audio Error",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                        });
+                        return;
+                    }
 
-                            // Wait for playback to complete
-                            while (outputDevice.PlaybackState == PlaybackState.Playing)
-                            {
-                                Thread.Sleep(10);
-                            }
+                    using (var audioFile = new AudioFileReader(tonePath))
+                    using (var outputDevice = new WaveOutEvent())
+                    {
+                        outputDevice.Init(audioFile);
+                        outputDevice.Play();
+
+                        // Wait for playback to complete
+                        while (outputDevice.PlaybackState == PlaybackState.Playing)
+                        {
+                            Thread.Sleep(10);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to play PTT tone {toneFileName}: {ex.Message}");
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"Failed to play PTT tone '{toneFileName}':\n{ex.Message}\n\nStack: {ex.StackTrace}",
+                            "Audio Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
                 }
             });
         }
