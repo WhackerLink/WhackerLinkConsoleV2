@@ -1,0 +1,25 @@
+{
+  "ShowSystemStatus": true,
+  "ShowChannels": true,
+  "ShowAlertTones": true,
+  "LastCodeplugPath": "gabagool.yml",
+  "ChannelPositions": {},
+  "SystemStatusPositions": {},
+  "AlertToneFilePaths": [
+    "alert1.wav",
+    "alert2.wav",
+    "alert3.wav",
+    "emergency.wav",
+    "panic.wav"
+  ],
+  "AlertTonePositions": {},
+  "ChannelOutputDevices": {
+    "GLOBAL_INPUT": 0,
+    "11001": 0
+  },
+  "EnableGlobalPttHotkey": false,
+  "PttHotkeyModifiers": 0,
+  "PttHotkeyKey": 134,
+  "UseDispatcherRidOverride": false,
+  "DispatcherRid": "212"
+}
