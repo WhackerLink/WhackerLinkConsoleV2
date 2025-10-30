@@ -978,6 +978,37 @@ namespace WhackerLinkConsoleV2
             }
         }
 
+        private void PlayPttTone(string toneFileName)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    string tonePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", toneFileName);
+
+                    if (File.Exists(tonePath))
+                    {
+                        using (var audioFile = new AudioFileReader(tonePath))
+                        using (var outputDevice = new WaveOutEvent())
+                        {
+                            outputDevice.Init(audioFile);
+                            outputDevice.Play();
+
+                            // Wait for playback to complete
+                            while (outputDevice.PlaybackState == PlaybackState.Playing)
+                            {
+                                Thread.Sleep(10);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to play PTT tone {toneFileName}: {ex.Message}");
+                }
+            });
+        }
+
         private void SelectWidgets_Click(object sender, RoutedEventArgs e)
         {
             WidgetSelectionWindow widgetSelectionWindow = new WidgetSelectionWindow();
@@ -1324,6 +1355,12 @@ namespace WhackerLinkConsoleV2
             Codeplug.System system = Codeplug.GetSystemForChannel(e.ChannelName);
             Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(e.ChannelName);
 
+            // Play PTT tones
+            if (e.PttState)
+                PlayPttTone("talk_permit.wav");
+            else
+                PlayPttTone("end_of_tx.wav");
+
             if (!system.IsDvm)
             {
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
@@ -1633,6 +1670,12 @@ namespace WhackerLinkConsoleV2
                 await Task.Delay(500);
 
             globalPttState = state;
+
+            // Play PTT tones
+            if (globalPttState)
+                PlayPttTone("talk_permit.wav");
+            else
+                PlayPttTone("end_of_tx.wav");
 
             // Check if there's a primed channel - if so, only activate PTT on that channel
             ChannelBox primedChannel = _selectedChannelsManager.GetSelectedChannels()
