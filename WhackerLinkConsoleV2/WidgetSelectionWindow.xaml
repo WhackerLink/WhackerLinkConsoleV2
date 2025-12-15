@@ -7,6 +7,7 @@
         <CheckBox x:Name="SystemStatusCheckBox" Content="System Status" IsChecked="True" />
         <CheckBox x:Name="ChannelCheckBox" Content="Channels" IsChecked="True" />
         <CheckBox x:Name="AlertToneCheckBox" Content="Alert Tones" IsChecked="True" />
+        <CheckBox x:Name="QCTonesCheckBox" Content="QC2 Tones" IsChecked="True" />
         <Button Content="Apply" Width="80" Margin="0,20,0,0" HorizontalAlignment="Center" Click="ApplyButton_Click" />
     </StackPanel>
 </Window>

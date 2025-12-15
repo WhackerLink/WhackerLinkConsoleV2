@@ -41,8 +41,11 @@
                 <MenuItem Header="Manual QC2" Click="ManualPage_Click" />
             </MenuItem>
         </Menu>
-
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.Row="2" Grid.ColumnSpan="2"  VerticalAlignment="Stretch">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Stretch">
+            <Canvas x:Name="ToneSetToolbar" Background="#FFF2F2F2" VerticalAlignment="Top"/>
+        </ScrollViewer>
+        
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Stretch">
             <Canvas x:Name="ChannelsCanvas" Background="#FFF2F2F2" VerticalAlignment="Top"/>
         </ScrollViewer>
 

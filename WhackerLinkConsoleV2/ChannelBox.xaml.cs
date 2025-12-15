@@ -336,5 +336,10 @@ namespace WhackerLinkConsoleV2.Controls
 
             ((Button)sender).Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFDDDDDD"));
         }
+
+        private void SetPageState(bool state)
+        {
+            PageState = state;
+        }
     }
 }
