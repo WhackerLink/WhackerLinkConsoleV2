@@ -34,7 +34,7 @@
             </Rectangle>
 
             <!-- Main Info Section -->
-            <StackPanel Grid.Column="1" HorizontalAlignment="Left" Width="119" Margin="48,0,0,1" Grid.RowSpan="2" Grid.ColumnSpan="2">
+            <StackPanel Grid.Column="1" HorizontalAlignment="Left" Width="140" Margin="27,0,0,1" Grid.RowSpan="2" Grid.ColumnSpan="2">
                 <TextBlock Text="{Binding ChannelName}" FontWeight="Bold" Foreground="White" FontSize="12"/>
                 <TextBlock Text="{Binding LastSrcId}" Foreground="Gold" FontSize="10"/>
                 <TextBlock Text="{Binding SystemName}" Foreground="Gold" FontSize="10"/>
@@ -100,7 +100,7 @@
                     <Image Source="pack://application:,,,/WhackerLinkConsoleV2;component/Assets/channelmarker.png" Width="36" Height="40"/>
                 </Button>
             </StackPanel>
-            <Button x:Name="PttButton" Click="PTTButton_Click" HorizontalAlignment="Left" Width="42" Margin="41,1,0,4" Grid.ColumnSpan="2" BorderThickness="0,0,0,0" BorderBrush="#FFC1C1C1" UseLayoutRounding="False" Grid.RowSpan="2" Background="#FFEEA400">
+            <Button x:Name="PttButton" Click="PTTButton_Click" HorizontalAlignment="Left" Width="42" Margin="20,1,0,4" Grid.ColumnSpan="2" BorderThickness="0,0,0,0" BorderBrush="#FFC1C1C1" UseLayoutRounding="False" Grid.RowSpan="2" Background="#FFEEA400">
                 <Button.Resources>
                     <Style TargetType="{x:Type Border}">
                         <Setter Property="CornerRadius" Value="2"/>

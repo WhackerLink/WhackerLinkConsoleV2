@@ -232,7 +232,7 @@ namespace WhackerLinkConsoleV2.Controls
             if (IsEditMode) return;
 
             IsSelected = !IsSelected;
-            Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FF0B004B") : Brushes.Gray;
+            Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FF0B004B") : (Brush)new BrushConverter().ConvertFrom("#888888");
 
             if (IsSelected)
             {
@@ -278,11 +278,11 @@ namespace WhackerLinkConsoleV2.Controls
         {
             if (SystemName == MainWindow.PLAYBACKSYS || ChannelName == MainWindow.PLAYBACKCHNAME || DstId == MainWindow.PLAYBACKTG)
             {
-                Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FFC90000") : Brushes.DarkGray;
+                Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FFC90000") : (Brush)new BrushConverter().ConvertFrom("#888888");
                 return;
             }
 
-            Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FF0B004B") : Brushes.DarkGray;
+            Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FF0B004B") : (Brush)new BrushConverter().ConvertFrom("#888888");
         }
 
         private async void PTTButton_Click(object sender, RoutedEventArgs e)
@@ -300,7 +300,7 @@ namespace WhackerLinkConsoleV2.Controls
         private void PageSelectButton_Click(object sender, RoutedEventArgs e)
         {
             if (!IsSelected) return;
-
+            
             PageState = !PageState;
             PageButtonClicked.Invoke(sender, this);
         }
@@ -335,6 +335,11 @@ namespace WhackerLinkConsoleV2.Controls
             if (!IsSelected || PttState) return;
 
             ((Button)sender).Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFDDDDDD"));
+        }
+
+        private void SetPageState(bool state)
+        {
+            PageState = state;
         }
     }
 }
