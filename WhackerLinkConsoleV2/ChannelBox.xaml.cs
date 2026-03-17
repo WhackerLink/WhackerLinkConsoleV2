@@ -244,6 +244,26 @@ namespace WhackerLinkConsoleV2.Controls
             }
         }
 
+        /// <summary>
+        /// Toggles the channel selection state programmatically (used by keybinds)
+        /// </summary>
+        public void ToggleSelection()
+        {
+            if (IsEditMode) return;
+
+            IsSelected = !IsSelected;
+            Background = IsSelected ? (Brush)new BrushConverter().ConvertFrom("#FF0B004B") : Brushes.Gray;
+
+            if (IsSelected)
+            {
+                _selectedChannelsManager.AddSelectedChannel(this);
+            }
+            else
+            {
+                _selectedChannelsManager.RemoveSelectedChannel(this);
+            }
+        }
+
         private void UpdatePTTColor()
         {
             if (IsEditMode) return;

@@ -1,0 +1,120 @@
+<Window x:Class="WhackerLinkConsoleV2.KeybindingConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Keybinding Configuration" Height="650" Width="800"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Global PTT Section -->
+        <TextBlock Text="Global PTT Keybind" FontWeight="Bold" Margin="0,0,0,5" Grid.Row="0"/>
+        <Grid Grid.Row="1" Margin="0,5,0,15">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBox x:Name="GlobalPttKeybindDisplay" 
+                     Text="Ctrl+T" 
+                     IsReadOnly="True" 
+                     VerticalContentAlignment="Center"
+                     Padding="5"
+                     Grid.Column="0"
+                     Grid.Row="0"
+                     Margin="0,0,10,0"/>
+            
+            <Button x:Name="RecordGlobalPttButton" 
+                    Click="RecordGlobalPtt_Click" 
+                    Content="Record" 
+                    Width="80" 
+                    Margin="0,0,10,0"
+                    Grid.Column="1"
+                    Grid.Row="0"/>
+            
+            <Button x:Name="ClearGlobalPttButton" 
+                    Click="ClearGlobalPtt_Click" 
+                    Content="Clear" 
+                    Width="80"
+                    Grid.Column="2"
+                    Grid.Row="0"/>
+            
+            <!-- Hotkeys work when unfocused checkbox -->
+            <CheckBox x:Name="HotkeysWorkWhenUnfocusedCheckbox"
+                      Content="Allow hotkeys to work when application is not focused (tabbed out)"
+                      Grid.Column="0"
+                      Grid.ColumnSpan="3"
+                      Grid.Row="1"
+                      Margin="0,10,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"/>
+        </Grid>
+
+        <!-- Tabbed Section for Per-Channel Keybindings -->
+        <TabControl Grid.Row="2" Margin="0,5,0,0">
+            <!-- PTT Keybindings Tab -->
+            <TabItem Header="PTT Keybindings">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock x:Name="CodeplugIdentifierText" 
+                               Text="No codeplug loaded" 
+                               FontSize="10" 
+                               Foreground="Gray" 
+                               Margin="0,0,0,10"
+                               Grid.Row="0"/>
+                    
+                    <ScrollViewer Grid.Row="1">
+                        <StackPanel x:Name="ChannelKeybindingsPanel"/>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            
+            <!-- Channel Toggle Keybindings Tab -->
+            <TabItem Header="Channel Toggle">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock x:Name="CodeplugIdentifierTextToggle" 
+                               Text="No codeplug loaded" 
+                               FontSize="10" 
+                               Foreground="Gray" 
+                               Margin="0,0,0,10"
+                               Grid.Row="0"/>
+                    
+                    <ScrollViewer Grid.Row="1">
+                        <StackPanel x:Name="ChannelToggleKeybindingsPanel"/>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Footer Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="3" Margin="0,20,0,0">
+            <Button x:Name="ApplyButton" 
+                    Click="Apply_Click" 
+                    Content="Apply" 
+                    Width="100" 
+                    Margin="0,0,10,0"/>
+            <Button x:Name="CloseButton" 
+                    Click="Close_Click" 
+                    Content="Close" 
+                    Width="100"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -16,6 +16,7 @@
 * 
 * Copyright (C) 2024-2025 Caleb, K4PHP
 * Copyright (C) 2025 J. Dean
+* Copyright (C) 2025 Firav (firavdev@gmail.com)
 * 
 */
 
@@ -70,6 +71,11 @@ namespace WhackerLinkConsoleV2
         private FlashingBackgroundManager _flashingManager;
         private WaveFilePlaybackManager _emergencyAlertPlayback;
         private WebSocketManager _webSocketManager = new WebSocketManager();
+        private ChannelKeybindingManager _channelKeybindingManager = new ChannelKeybindingManager();
+        private GlobalHotKeyManager _globalHotKeyManager;
+        private ChannelHotKeyManager _channelHotKeyManager;
+        private int _globalPttHotKeyId = -1;
+        private string _currentCodeplugIdentifier;
 
         private ChannelBox playbackChannelBox;
 
@@ -82,7 +88,7 @@ namespace WhackerLinkConsoleV2
         private readonly WaveInEvent _waveIn;
         private readonly AudioManager _audioManager;
 
-        private static System.Timers.Timer _channelHoldTimer;
+        private System.Timers.Timer _channelHoldTimer;
 
         private Dictionary<string, SlotStatus> systemStatuses = new Dictionary<string, SlotStatus>();
         private FneSystemManager _fneSystemManager = new FneSystemManager();
@@ -95,11 +101,24 @@ namespace WhackerLinkConsoleV2
 
         public MainWindow()
         {
-#if !DEBUG
-            ConsoleNative.ShowConsole();
+            // Check command-line arguments for console flag
+            var args = Environment.GetCommandLineArgs();
+            bool showConsole = args.Any(arg => arg.Equals("--console", StringComparison.OrdinalIgnoreCase) || 
+                                               arg.Equals("-console", StringComparison.OrdinalIgnoreCase) ||
+                                               arg.Equals("/console", StringComparison.OrdinalIgnoreCase));
+
+#if DEBUG
+            showConsole = true; // Always show console in debug builds
 #endif
+
+            if (showConsole)
+            {
+                ConsoleNative.ShowConsole();
+            }
+
             InitializeComponent();
             _settingsManager.LoadSettings();
+            _channelKeybindingManager.LoadKeybindings();
             _selectedChannelsManager = new SelectedChannelsManager();
             _flashingManager = new FlashingBackgroundManager(null, ChannelsCanvas, null, this);
             _emergencyAlertPlayback = new WaveFilePlaybackManager(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "emergency.wav"));
@@ -122,6 +141,7 @@ namespace WhackerLinkConsoleV2
 
             _selectedChannelsManager.SelectedChannelsChanged += SelectedChannelsChanged;
             Loaded += MainWindow_Loaded;
+            Loaded += (s, e) => InitializeGlobalHotkeys();
         }
 
         private void OpenCodeplug_Click(object sender, RoutedEventArgs e)
@@ -445,6 +465,9 @@ namespace WhackerLinkConsoleV2
             //    offsetY += 106;
             //}
 
+            // Initialize channel hotkeys after channels are created
+            InitializeChannelHotkeys();
+
             AdjustCanvasHeight();
         }
 
@@ -604,6 +627,304 @@ namespace WhackerLinkConsoleV2
 
             AudioSettingsWindow audioSettingsWindow = new AudioSettingsWindow(_settingsManager, _audioManager, channels);
             audioSettingsWindow.ShowDialog();
+        }
+
+        private void ConfigurePttKeybindings_Click(object sender, RoutedEventArgs e)
+        {
+            if (Codeplug == null)
+            {
+                MessageBox.Show("Please load a codeplug first before configuring PTT keybindings.", "No Codeplug Loaded", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var configWindow = new KeybindingConfigWindow(
+                _settingsManager,
+                _channelKeybindingManager,
+                Codeplug,
+                _settingsManager.LastCodeplugPath,
+                this
+            );
+
+            configWindow.Owner = this;
+            configWindow.ShowDialog();
+
+            // Reinitialize hotkeys only if configuration changes were applied
+            if (configWindow.KeybindingsApplied)
+            {
+                InitializeGlobalHotkeys();
+                if (Codeplug != null)
+                {
+                    InitializeChannelHotkeys();
+                }
+            }
+        }
+
+        private void InitializeGlobalHotkeys()
+        {
+            try
+            {
+                // Initialize the hotkey manager if not already done
+                if (_globalHotKeyManager == null)
+                {
+                    _globalHotKeyManager = new GlobalHotKeyManager();
+                    _globalHotKeyManager.Initialize(this);
+                }
+                
+                // Update the WorkWhenUnfocused setting
+                _globalHotKeyManager.WorkWhenUnfocused = _settingsManager.HotkeysWorkWhenUnfocused;
+
+                // Unregister old hotkey
+                if (_globalPttHotKeyId != -1)
+                {
+                    _globalHotKeyManager.UnregisterHotKey(_globalPttHotKeyId);
+                    _globalPttHotKeyId = -1;
+                }
+
+                // Register Global PTT hotkey
+                if (_settingsManager.EnableGlobalPttHotkey && !string.IsNullOrWhiteSpace(_settingsManager.GlobalPttKeybind))
+                {
+                    if (KeybindingParser.TryParseKeybinding(_settingsManager.GlobalPttKeybind, out var globalModifiers, out var globalKey))
+                    {
+                        _globalPttHotKeyId = _globalHotKeyManager.RegisterHotKey(
+                            globalModifiers,
+                            globalKey,
+                            OnGlobalPttHotKeyDown,
+                            OnGlobalPttHotKeyUp
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR: Failed to initialize global hotkeys: {ex.Message}");
+            }
+        }
+
+        private void InitializeChannelHotkeys()
+        {
+            try
+            {
+                _currentCodeplugIdentifier = ChannelKeybindingManager.GenerateCodeplugIdentifier(_settingsManager.LastCodeplugPath);
+
+                // Make sure global hotkey manager is initialized first
+                if (_globalHotKeyManager == null)
+                {
+                    InitializeGlobalHotkeys();
+                }
+
+                if (_channelHotKeyManager == null)
+                {
+                    _channelHotKeyManager = new ChannelHotKeyManager(
+                        _globalHotKeyManager,
+                        _channelKeybindingManager,
+                        OnChannelHotKeyTriggered,
+                        OnChannelToggleTriggered
+                    );
+                }
+
+                var allChannels = ChannelsCanvas.Children.OfType<ChannelBox>().ToList();
+                _channelHotKeyManager.InitializeChannelHotkeys(_currentCodeplugIdentifier, allChannels);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR: Failed to initialize channel hotkeys: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Temporarily suspends all hotkeys (used when configuration window is open)
+        /// </summary>
+        public void SuspendHotkeys()
+        {
+            try
+            {
+                _globalHotKeyManager?.UnregisterAllHotKeys();
+                _channelHotKeyManager?.UnregisterAllChannelHotkeys();
+                Console.WriteLine("Hotkeys suspended");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR: Failed to suspend hotkeys: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Resumes all hotkeys after suspension
+        /// </summary>
+        public void ResumeHotkeys()
+        {
+            try
+            {
+                InitializeGlobalHotkeys();
+                if (Codeplug != null)
+                {
+                    InitializeChannelHotkeys();
+                }
+                Console.WriteLine("Hotkeys resumed");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR: Failed to resume hotkeys: {ex.Message}");
+            }
+        }
+
+        private void OnGlobalPttHotKeyDown()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (!globalPttState)
+                {
+                    globalPttState = true;
+                    ActivateGlobalPtt();
+                }
+            });
+        }
+
+        private void OnGlobalPttHotKeyUp()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (globalPttState)
+                {
+                    globalPttState = false;
+                    ReleaseGlobalPtt();
+                }
+            });
+        }
+
+        private void OnChannelHotKeyTriggered(ChannelBox channel, bool isPressed)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (channel != null)
+                {
+                    if (isPressed && !channel.PttState)
+                    {
+                        channel.PttState = true;
+                        ChannelBox_PTTButtonClicked(channel, channel);
+                    }
+                    else if (!isPressed && channel.PttState)
+                    {
+                        channel.PttState = false;
+                        ChannelBox_PTTButtonClicked(channel, channel);
+                    }
+                }
+            });
+        }
+
+        private void OnChannelToggleTriggered(ChannelBox channel)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (channel != null)
+                {
+                    // Toggle the channel's selection state (like clicking on it)
+                    channel.ToggleSelection();
+                    
+                    // Optionally log the toggle action
+                    Console.WriteLine($"Channel '{channel.ChannelName}' toggled to {(channel.IsSelected ? "selected" : "unselected")}");
+                }
+            });
+        }
+
+        private async void ActivateGlobalPtt()
+        {
+            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+            {
+                if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                    continue;
+
+                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                if (!system.IsDvm)
+                {
+                    IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                    if (!channel.IsSelected)
+                        continue;
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnGlobalPtt.Background = channel.redGradient;
+                    });
+
+                    GRP_VCH_REQ request = new GRP_VCH_REQ
+                    {
+                        SrcId = system.Rid,
+                        DstId = cpgChannel.Tgid,
+                        Site = system.Site
+                    };
+
+                    channel.PttState = true;
+
+                    handler.SendMessage(request.GetData());
+                }
+                else
+                {
+                    PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
+
+                    channel.txStreamId = handler.NewStreamId();
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnGlobalPtt.Background = channel.redGradient;
+                        channel.PttState = true;
+                    });
+
+                    handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
+                }
+            }
+        }
+
+        private async void ReleaseGlobalPtt()
+        {
+            await Task.Delay(500);
+
+            foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
+            {
+                if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                    continue;
+
+                Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
+                Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
+
+                if (!system.IsDvm)
+                {
+                    IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
+
+                    if (!channel.IsSelected)
+                        continue;
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnGlobalPtt.Background = channel.grayGradient;
+                    });
+
+                    GRP_VCH_RLS release = new GRP_VCH_RLS
+                    {
+                        SrcId = system.Rid,
+                        DstId = cpgChannel.Tgid,
+                        Site = system.Site
+                    };
+
+                    channel.PttState = false;
+
+                    handler.SendMessage(release.GetData());
+                }
+                else
+                {
+                    PeerSystem handler = _fneSystemManager.GetFneSystem(system.Name);
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnGlobalPtt.Background = channel.grayGradient;
+                        channel.PttState = false;
+                    });
+
+                    handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), false);
+                }
+            }
         }
 
         private void P25Page_Click(object sender, RoutedEventArgs e)
@@ -1496,7 +1817,7 @@ namespace WhackerLinkConsoleV2
 
                         await Task.Delay(1000);
 
-                        SendAlertTone("hold.wav", true);
+                        SendAlertTone(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", "hold.wav"), true);
                         // });
                     }
                 } else
@@ -1508,7 +1829,7 @@ namespace WhackerLinkConsoleV2
                         handler.SendP25TDU(UInt32.Parse(system.Rid), UInt32.Parse(cpgChannel.Tgid), true);
                         await Task.Delay(1000);
 
-                        SendAlertTone("hold.wav", true);
+                        SendAlertTone(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", "hold.wav"), true);
                     }
                 }
             }
@@ -1518,7 +1839,6 @@ namespace WhackerLinkConsoleV2
         {
             _settingsManager.SaveSettings();
             base.OnClosing(e);
-            Application.Current.Shutdown();
         }
 
         private void ClearEmergency_Click(object sender, RoutedEventArgs e)
@@ -1535,7 +1855,8 @@ namespace WhackerLinkConsoleV2
         private void btnAlert1_Click(object sender, RoutedEventArgs e)
         {
             Dispatcher.Invoke(() => {
-                SendAlertTone("alert1.wav");
+                string alertPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", "alert1.wav");
+                SendAlertTone(alertPath);
             });
         }
 
@@ -1543,7 +1864,8 @@ namespace WhackerLinkConsoleV2
         {
             Dispatcher.Invoke(() =>
             {
-                SendAlertTone("alert2.wav");
+                string alertPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", "alert2.wav");
+                SendAlertTone(alertPath);
             });
         }
 
@@ -1551,7 +1873,8 @@ namespace WhackerLinkConsoleV2
         {
             Dispatcher.Invoke(() =>
             {
-                SendAlertTone("alert3.wav");
+                string alertPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", "alert3.wav");
+                SendAlertTone(alertPath);
             });
         }
 
@@ -2313,6 +2636,99 @@ namespace WhackerLinkConsoleV2
         private void CallHist_Click(object sender, RoutedEventArgs e)
         {
             callHistoryWindow.Show();
+        }
+
+        private void MainWindow_OnClosed(object sender, EventArgs e)
+        {
+            Console.WriteLine("=== Application Shutdown Started ===");
+
+            // Stop and dispose timers FIRST to prevent any new operations
+            try
+            {
+                Console.WriteLine("Stopping timers...");
+                _channelHoldTimer?.Stop();
+                _channelHoldTimer?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing timer: {ex.Message}");
+            }
+
+            // Cleanup hotkeys early
+            try
+            {
+                _globalHotKeyManager?.UnregisterAllHotKeys();
+                _channelHotKeyManager?.UnregisterAllChannelHotkeys();
+                _globalHotKeyManager?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing hotkeys: {ex.Message}");
+            }
+
+            // Disconnect all WebSocket connections
+            try
+            {
+                Console.WriteLine("Disconnecting WebSocket connections...");
+                _webSocketManager?.ClearAllWebSocketHandlers();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disconnecting websockets: {ex.Message}");
+            }
+
+            // Stop all FNE systems
+            try
+            {
+                Console.WriteLine("Stopping FNE systems...");
+                _fneSystemManager?.ClearAll();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error stopping FNE systems: {ex.Message}");
+            }
+
+            // Give connections a moment to close gracefully
+            Console.WriteLine("Waiting for connections to close...");
+            System.Threading.Thread.Sleep(1000);
+
+            // Stop and dispose audio recording
+            try
+            {
+                Console.WriteLine("Stopping audio recording...");
+                _waveIn?.StopRecording();
+                _waveIn?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing audio: {ex.Message}");
+            }
+
+            // Stop emergency alert playback
+            try
+            {
+                _emergencyAlertPlayback?.Stop();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error stopping emergency playback: {ex.Message}");
+            }
+
+            // Save settings
+            try
+            {
+                _settingsManager?.SaveSettings();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving settings: {ex.Message}");
+            }
+
+            Console.WriteLine("Cleanup complete. Terminating process...");
+            
+            // Force immediate process termination
+            // This is necessary because background threads from WebSocket/FNE may not terminate cleanly
+            Environment.Exit(0);
         }
     }
 }

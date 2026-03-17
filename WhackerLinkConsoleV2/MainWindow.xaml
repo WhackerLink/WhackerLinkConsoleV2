@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:WhackerLinkConsoleV2.Controls"
-        Title="WhackerLinkConsoleV2" Height="600" Width="1000" Background="#FFF2F2F2">
+        Title="WhackerLinkConsoleV2" Height="600" Width="1000" Background="#FFF2F2F2"
+        Icon="/Assets/whackerlink-logo-icon.png"
+        Closed="MainWindow_OnClosed">
     <Grid Background="#FFF2F2F2">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="497*"/>
@@ -29,6 +31,7 @@
             </MenuItem>
             <MenuItem Header="Edit">
                 <MenuItem Header="Audio Settings" Click="AudioSettings_Click" />
+                <MenuItem Header="Configure Keybindings" Click="ConfigurePttKeybindings_Click"/>
                 <MenuItem Header="Enable Edit Mode" Click="ToggleEditMode_Click"/>
                 <MenuItem Header="Select Widgets to Display" Click="SelectWidgets_Click"/>
                 <MenuItem Header="Reset Settings" Click="ResetSettings_Click"/>

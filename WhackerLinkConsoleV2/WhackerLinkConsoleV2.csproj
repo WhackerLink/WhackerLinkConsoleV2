@@ -9,6 +9,7 @@
     <Platforms>AnyCPU;x64;x86</Platforms>
     <Configurations>Debug;Release;WIN32</Configurations>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,6 +39,7 @@
     <Resource Include="Assets\alerttone.png" />
     <Resource Include="Assets\alerttone2.png" />
     <Resource Include="Assets\audio.png" />
+    <Resource Include="Assets\app-icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -69,6 +71,7 @@
     <Resource Include="Assets\pageselect.png" />
     <Resource Include="Assets\pttselect.png" />
     <Resource Include="Assets\whackerlink-logo.png" />
+    <Resource Include="Assets\whackerlink-logo-icon.png" />
     <Resource Include="Assets\WhackerLinkLogoV2.png" />
     <Resource Include="Assets\WhackerLinkLogoV4.png" />
   </ItemGroup>

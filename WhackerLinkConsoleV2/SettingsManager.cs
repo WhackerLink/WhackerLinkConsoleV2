@@ -39,6 +39,14 @@ namespace WhackerLinkConsoleV2
         public Dictionary<string, ChannelPosition> AlertTonePositions { get; set; } = new Dictionary<string, ChannelPosition>();
         public Dictionary<string, int> ChannelOutputDevices { get; set; } = new Dictionary<string, int>();
 
+        // Hotkey bindings for global PTT
+        // Supports both single-key (e.g., "T", "P") and dual-key (e.g., "Ctrl+T", "Ctrl+P")
+        public string GlobalPttKeybind { get; set; } = "Ctrl+T";          // Global PTT across all selected channels
+        public bool EnableGlobalPttHotkey { get; set; } = true;
+        
+        // Controls whether hotkeys work when the application is not focused/tabbed out
+        public bool HotkeysWorkWhenUnfocused { get; set; } = true;
+
         public void LoadSettings()
         {
             if (!File.Exists(SettingsFilePath)) return;
@@ -59,6 +67,9 @@ namespace WhackerLinkConsoleV2
                     AlertToneFilePaths = loadedSettings.AlertToneFilePaths ?? new List<string>();
                     AlertTonePositions = loadedSettings.AlertTonePositions ?? new Dictionary<string, ChannelPosition>();
                     ChannelOutputDevices = loadedSettings.ChannelOutputDevices ?? new Dictionary<string, int>();
+                    GlobalPttKeybind = loadedSettings.GlobalPttKeybind ?? "Ctrl+T";
+                    EnableGlobalPttHotkey = loadedSettings.EnableGlobalPttHotkey;
+                    HotkeysWorkWhenUnfocused = loadedSettings.HotkeysWorkWhenUnfocused;
                 }
             }
             catch (Exception ex)
