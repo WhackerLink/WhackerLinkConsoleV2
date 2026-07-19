@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using fnecore.DMR;
 using fnecore;
-using fnecore.P25.KMM;
+using fnecore.P25.kmm;
 
 namespace WhackerLinkConsoleV2
 {

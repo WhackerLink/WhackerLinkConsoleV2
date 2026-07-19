@@ -49,6 +49,7 @@ using WebSocketSharp;
 using NWaves.Signals;
 using static WhackerLinkConsoleV2.P25Crypto;
 using static WhackerLinkLib.Models.Radio.Codeplug;
+using WhackerLinkLib.Models.Conventional;
 
 namespace WhackerLinkConsoleV2
 {
@@ -110,9 +111,9 @@ namespace WhackerLinkConsoleV2
             return channel.Tgid ?? channel.Frequency;
         }
 
-        private int GetConvMode(Codeplug.System system)
+        private ConvVoiceMode GetConvMode(Codeplug.System system)
         {
-            return IsMdcConv(system) ? 0x01 : 0x00;
+            return IsMdcConv(system) ? ConvVoiceMode.ANALOG_MDC : ConvVoiceMode.ANALOG;
         }
 
         private Mdc1200.Decoder GetMdcDecoder(string channelName)
@@ -533,7 +534,7 @@ namespace WhackerLinkConsoleV2
                                 {
                                     SrcId = system.Rid,
                                     DstId = cpgChannel.Tgid,
-                                    Data = Convert.ToBase64String(EncodeMdcPttId(system)),
+                                    Data = EncodeMdcPttId(system),
                                     Mode = GetConvMode(system),
                                     Frequency = cpgChannel.Frequency
                                 };
@@ -546,7 +547,7 @@ namespace WhackerLinkConsoleV2
                             {
                                 SrcId = system.Rid,
                                 DstId = cpgChannel.Tgid,
-                                Data = Convert.ToBase64String(e.Buffer),
+                                Data = e.Buffer,
                                 Mode = GetConvMode(system),
                                 Frequency = cpgChannel.Frequency
                             };
@@ -716,7 +717,7 @@ namespace WhackerLinkConsoleV2
 
                     byte[] tsbk = new byte[P25Defines.P25_TSBK_LENGTH_BYTES];
 
-                    callAlert.Encode(ref tsbk, true, true);
+                    //callAlert.Encode(ref tsbk, true, true);
 
                     handler.SendP25TSBK(callData, tsbk);
 
@@ -1112,7 +1113,7 @@ namespace WhackerLinkConsoleV2
                 if (voice.SrcId == system.Rid || voice.Frequency != cpgChannel.Frequency)
                     continue;
 
-                byte[] pcm = Convert.FromBase64String(voice.Data);
+                byte[] pcm = voice.Data;
 
                 if (!voice.SrcId.IsNullOrEmpty() && !channel.IsReceiving)
                 {
@@ -1120,7 +1121,7 @@ namespace WhackerLinkConsoleV2
                     channel.LastSrcId = "Last SRC: " + voice.SrcId;
                 }
 
-                if (voice.Mode == 0x01)
+                if (voice.Mode == ConvVoiceMode.ANALOG_MDC)
                 {
                     Mdc1200.Packet packet = GetMdcDecoder(channel.ChannelName).ProcessSamples(pcm);
                     if (packet != null)
