@@ -131,6 +131,27 @@ namespace WhackerLinkConsoleV2
             return encoder.GetAllSamples();
         }
 
+        private void SendConventionalPcm(IPeer handler, Codeplug.System system, Codeplug.Channel cpgChannel, byte[] pcm)
+        {
+            for (int i = 0; i < pcm.Length; i += AudioConverter.ExpectedPcmLength)
+            {
+                int length = Math.Min(AudioConverter.ExpectedPcmLength, pcm.Length - i);
+                byte[] chunk = new byte[AudioConverter.ExpectedPcmLength];
+                Buffer.BlockCopy(pcm, i, chunk, 0, length);
+
+                CONV_VOICE voicePacket = new CONV_VOICE
+                {
+                    SrcId = system.Rid,
+                    DstId = GetChannelTarget(cpgChannel),
+                    Data = chunk,
+                    Mode = GetConvMode(system),
+                    Frequency = cpgChannel.Frequency
+                };
+
+                handler.SendMessage(voicePacket.GetData());
+            }
+        }
+
         public MainWindow()
         {
 #if !DEBUG
@@ -206,6 +227,11 @@ namespace WhackerLinkConsoleV2
 
         private void GenerateChannelWidgets()
         {
+            _selectedChannelsManager.ClearSelections();
+            _webSocketManager.ClearAllWebSocketHandlers();
+            _fneSystemManager.ClearAll();
+            mdcDecoders.Clear();
+
             ChannelsCanvas.Children.Clear();
             double offsetX = 20;
             double offsetY = 20;
@@ -248,14 +274,15 @@ namespace WhackerLinkConsoleV2
                         _webSocketManager.AddWebSocketHandler(system.Name);
 
                         IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
-                        handler.OnVoiceChannelResponse += HandleVoiceResponse;
-                        handler.OnVoiceChannelRelease += HandleVoiceRelease;
-                        handler.OnEmergencyAlarmResponse += HandleEmergencyAlarmResponse;
-                        handler.OnAudioData += HandleReceivedAudio;
-                        handler.OnConventionalVoice += HandleConventionalVoice;
-                        handler.OnConventionalVoiceTerm += HandleConventionalVoiceTerm;
-                        handler.OnAffiliationUpdate += HandleAffiliationUpdate;
-                        handler.OnCallAlert += HandleCallAlert;
+                        string handlerSystemName = $"System: {system.Name}";
+                        handler.OnVoiceChannelResponse += (response) => HandleVoiceResponse(handlerSystemName, response);
+                        handler.OnVoiceChannelRelease += (response) => HandleVoiceRelease(handlerSystemName, response);
+                        handler.OnEmergencyAlarmResponse += (response) => HandleEmergencyAlarmResponse(handlerSystemName, response);
+                        handler.OnAudioData += (audioPacket) => HandleReceivedAudio(handlerSystemName, audioPacket);
+                        handler.OnConventionalVoice += (voice) => HandleConventionalVoice(handlerSystemName, voice);
+                        handler.OnConventionalVoiceTerm += (voice) => HandleConventionalVoiceTerm(handlerSystemName, voice);
+                        handler.OnAffiliationUpdate += (affUpdate) => HandleAffiliationUpdate(handlerSystemName, affUpdate);
+                        handler.OnCallAlert += (request) => HandleCallAlert(handlerSystemName, request);
 
                         handler.OnUnitRegistrationResponse += (response) =>
                         {
@@ -530,29 +557,11 @@ namespace WhackerLinkConsoleV2
 
                             if (IsMdcConv(system) && !channel.MdcPttSent)
                             {
-                                CONV_VOICE mdcPacket = new CONV_VOICE
-                                {
-                                    SrcId = system.Rid,
-                                    DstId = cpgChannel.Tgid,
-                                    Data = EncodeMdcPttId(system),
-                                    Mode = GetConvMode(system),
-                                    Frequency = cpgChannel.Frequency
-                                };
-
-                                handler.SendMessage(mdcPacket.GetData());
+                                SendConventionalPcm(handler, system, cpgChannel, EncodeMdcPttId(system));
                                 channel.MdcPttSent = true;
                             }
 
-                            CONV_VOICE voicePacket = new CONV_VOICE
-                            {
-                                SrcId = system.Rid,
-                                DstId = cpgChannel.Tgid,
-                                Data = e.Buffer,
-                                Mode = GetConvMode(system),
-                                Frequency = cpgChannel.Frequency
-                            };
-
-                            handler.SendMessage(voicePacket.GetData());
+                            SendConventionalPcm(handler, system, cpgChannel, e.Buffer);
                         }
                         else if (channel.IsSelected && channel.VoiceChannel != null && channel.PttState)
                         {
@@ -623,8 +632,8 @@ namespace WhackerLinkConsoleV2
 
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
-         
-                if (!system.IsDvm) {
+
+                if (!system.IsDvm && !IsConventional(system)) {
                     IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
 
                     if (channel.IsSelected && handler.IsConnected)
@@ -643,7 +652,7 @@ namespace WhackerLinkConsoleV2
                             handler.SendMessage(release.GetData());
                         });
                     }
-                } else
+                } else if (system.IsDvm)
                 {
                     PeerSystem fne = _fneSystemManager.GetFneSystem(system.Name);
 
@@ -1021,10 +1030,18 @@ namespace WhackerLinkConsoleV2
 
         private void HandleEmergencyAlarmResponse(EMRG_ALRM_RSP response)
         {
+            HandleEmergencyAlarmResponse(null, response);
+        }
+
+        private void HandleEmergencyAlarmResponse(string systemName, EMRG_ALRM_RSP response)
+        {
             bool forUs = false;
 
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
+                if (systemName != null && channel.SystemName != systemName)
+                    continue;
+
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
 
@@ -1046,10 +1063,13 @@ namespace WhackerLinkConsoleV2
             }
         }
 
-        private void HandleCallAlert(CALL_ALRT request)
+        private void HandleCallAlert(string systemName, CALL_ALRT request)
         {
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
+                if (channel.SystemName != systemName)
+                    continue;
+
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
 
@@ -1073,7 +1093,7 @@ namespace WhackerLinkConsoleV2
             }
         }
 
-        private void HandleReceivedAudio(AudioPacket audioPacket)
+        private void HandleReceivedAudio(string systemName, AudioPacket audioPacket)
         {
             bool shouldReceive = false;
             string talkgroupId = audioPacket.VoiceChannel.DstId;
@@ -1083,13 +1103,16 @@ namespace WhackerLinkConsoleV2
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
                     continue;
 
+                if (channel.SystemName != systemName)
+                    continue;
+
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
 
                 if (system.IsDvm || IsConventional(system))
                     continue;
 
-                if (audioPacket.VoiceChannel.SrcId != system.Rid && audioPacket.VoiceChannel.Frequency == channel.VoiceChannel && audioPacket.VoiceChannel.DstId == cpgChannel.Tgid)
+                if (audioPacket.VoiceChannel.SrcId != system.Rid && audioPacket.VoiceChannel.Frequency == channel.VoiceChannel && audioPacket.VoiceChannel.DstId == cpgChannel.Tgid && !IsConventional(system))
                     shouldReceive = true;
             }
 
@@ -1097,11 +1120,14 @@ namespace WhackerLinkConsoleV2
                 _audioManager.AddTalkgroupStream(talkgroupId, audioPacket.Data);
         }
 
-        private void HandleConventionalVoice(CONV_VOICE voice)
+        private void HandleConventionalVoice(string systemName, CONV_VOICE voice)
         {
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                    continue;
+
+                if (channel.SystemName != systemName)
                     continue;
 
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
@@ -1110,7 +1136,7 @@ namespace WhackerLinkConsoleV2
                 if (!IsConventional(system))
                     continue;
 
-                if (voice.SrcId == system.Rid || voice.Frequency != cpgChannel.Frequency)
+                if (voice.Frequency != cpgChannel.Frequency)
                     continue;
 
                 byte[] pcm = voice.Data;
@@ -1144,15 +1170,20 @@ namespace WhackerLinkConsoleV2
                     channel.IsReceiving = true;
                 });
 
+                Console.WriteLine("PACKET: " + BitConverter.ToString(pcm));
+
                 _audioManager.AddTalkgroupStream(cpgChannel.Frequency, pcm);
             }
         }
 
-        private void HandleConventionalVoiceTerm(CONV_VOICE_TERM voice)
+        private void HandleConventionalVoiceTerm(string systemName, CONV_VOICE_TERM voice)
         {
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                    continue;
+
+                if (channel.SystemName != systemName)
                     continue;
 
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
@@ -1179,11 +1210,14 @@ namespace WhackerLinkConsoleV2
             }
         }
 
-        private void HandleAffiliationUpdate(AFF_UPDATE affUpdate)
+        private void HandleAffiliationUpdate(string systemName, AFF_UPDATE affUpdate)
         {
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
+                    continue;
+
+                if (channel.SystemName != systemName)
                     continue;
 
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
@@ -1219,17 +1253,20 @@ namespace WhackerLinkConsoleV2
             }
         }
 
-        private void HandleVoiceRelease(GRP_VCH_RLS response)
+        private void HandleVoiceRelease(string systemName, GRP_VCH_RLS response)
         {
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
                     continue;
 
+                if (channel.SystemName != systemName)
+                    continue;
+
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
 
-                if (system.IsDvm)
+                if (system.IsDvm || IsConventional(system))
                     continue;
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
@@ -1255,17 +1292,20 @@ namespace WhackerLinkConsoleV2
             }
         }
 
-        private void HandleVoiceResponse(GRP_VCH_RSP response)
+        private void HandleVoiceResponse(string systemName, GRP_VCH_RSP response)
         {
             foreach (ChannelBox channel in _selectedChannelsManager.GetSelectedChannels())
             {
                 if (channel.SystemName == PLAYBACKSYS || channel.ChannelName == PLAYBACKCHNAME || channel.DstId == PLAYBACKTG)
                     continue;
 
+                if (channel.SystemName != systemName)
+                    continue;
+
                 Codeplug.System system = Codeplug.GetSystemForChannel(channel.ChannelName);
                 Codeplug.Channel cpgChannel = Codeplug.GetChannelByName(channel.ChannelName);
 
-                if (system.IsDvm)
+                if (system.IsDvm || IsConventional(system))
                     continue;
 
                 IPeer handler = _webSocketManager.GetWebSocketHandler(system.Name);
