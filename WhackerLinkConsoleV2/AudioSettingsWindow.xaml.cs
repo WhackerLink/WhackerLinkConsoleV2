@@ -62,6 +62,8 @@ namespace WhackerLinkConsoleV2
 
             foreach (var channel in _channels)
             {
+                string channelId = channel.Tgid ?? channel.Frequency;
+
                 TextBlock channelLabel = new TextBlock
                 {
                     Text = channel.Name,
@@ -73,15 +75,15 @@ namespace WhackerLinkConsoleV2
                 {
                     Width = 350,
                     ItemsSource = outputDevices,
-                    SelectedIndex = _settingsManager.ChannelOutputDevices.ContainsKey(channel.Tgid)
-                        ? _settingsManager.ChannelOutputDevices[channel.Tgid]
+                    SelectedIndex = _settingsManager.ChannelOutputDevices.ContainsKey(channelId)
+                        ? _settingsManager.ChannelOutputDevices[channelId]
                         : 0
                 };
 
                 outputDeviceComboBox.SelectionChanged += (s, e) =>
                 {
                     int selectedIndex = outputDeviceComboBox.SelectedIndex;
-                    _selectedOutputDevices[channel.Tgid] = selectedIndex;
+                    _selectedOutputDevices[channelId] = selectedIndex;
                 };
 
                 ChannelOutputStackPanel.Children.Add(channelLabel);

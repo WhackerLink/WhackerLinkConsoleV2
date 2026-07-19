@@ -68,6 +68,8 @@ namespace WhackerLinkConsoleV2.Controls
         public string ChannelName { get; set; }
         public string SystemName { get; set; }
         public string DstId { get; set; }
+        public string Frequency { get; set; }
+        public string Mode { get; set; }
 
 #if WIN32
         public AmbeVocoder extFullRateVocoder;
@@ -82,6 +84,8 @@ namespace WhackerLinkConsoleV2.Controls
 
         public bool IsReceiving { get; set; } = false;
         public bool IsReceivingEncrypted { get; set; } = false;
+        public bool MdcPttSent { get; set; } = false;
+        public string ConvSrcId { get; set; }
 
         public string LastSrcId
         {
@@ -174,7 +178,7 @@ namespace WhackerLinkConsoleV2.Controls
 
         public uint txStreamId { get; internal set; }
 
-        public ChannelBox(SelectedChannelsManager selectedChannelsManager, AudioManager audioManager, string channelName, string systemName, string dstId)
+        public ChannelBox(SelectedChannelsManager selectedChannelsManager, AudioManager audioManager, string channelName, string systemName, string dstId, string frequency = null, string mode = null)
         {
             InitializeComponent();
             DataContext = this;
@@ -183,6 +187,8 @@ namespace WhackerLinkConsoleV2.Controls
             _flashingBackgroundManager = new FlashingBackgroundManager(this);
             ChannelName = channelName;
             DstId = dstId;
+            Frequency = frequency;
+            Mode = mode ?? "trunking";
             SystemName = $"System: {systemName}";
             LastSrcId = $"Last SRC: {LastSrcId}";
             UpdateBackground();

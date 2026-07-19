@@ -8,6 +8,7 @@ radioWide:
 
 systems:
   - name: "System 1"
+    mode: trunking
     address: "localhost"
     port: 3000
     authKey: ""
@@ -26,6 +27,7 @@ systems:
 
     # Example DVM Project FNE system
   - name: "System 2"
+    mode: trunking
     address: "localhost"
     port: 3001
     authKey: "RPT_PASSWORD"
@@ -44,6 +46,12 @@ systems:
         systemID: 1
         siteID: 1
         range: 1.5
+  - name: "Conventional"
+    mode: mdcconv
+    address: "localhost"
+    port: 3002
+    authKey: ""
+    rid: "12345"
 
 zones:
   - name: "Zone 1"
@@ -60,6 +68,9 @@ zones:
       - name: "Channel 3"
         system: "System 1"
         tgid: "15003"
+      - name: "Conv 1"
+        system: "Conventional"
+        frequency: "853.0125"
 
   - name: "Zone 2"
     channels:
